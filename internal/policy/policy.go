@@ -12,6 +12,7 @@ import (
 
 type MatchType string
 type Decision string
+type ActionType string
 
 const (
 	MatchGlob  MatchType = "glob"
@@ -21,6 +22,10 @@ const (
 	DecisionBlock   Decision = "block"
 	DecisionAsk     Decision = "ask"
 	DecisionSandbox Decision = "sandbox"
+
+	ActionTypeShell ActionType = "shell"
+	ActionTypeGit   ActionType = "git"
+	ActionTypeFile  ActionType = "file"
 )
 
 type Condition struct {
