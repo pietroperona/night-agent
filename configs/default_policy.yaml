@@ -4,7 +4,7 @@ rules:
   - id: block_sudo
     when:
       action_type: shell
-      command_matches: ["sudo *"]
+      command_matches: ["sudo *", "*/sudo *"]
     match_type: glob
     decision: block
     reason: "sudo è disabilitato per gli agenti AI"
