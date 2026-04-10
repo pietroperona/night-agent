@@ -122,6 +122,8 @@ func TestDaemon_AllowsNonMatchingCommand(t *testing.T) {
 	}
 }
 
+// TestDaemon_AskDecision verifica che "ask" a runtime si comporti come "block".
+// La configurazione delle eccezioni avviene durante guardian init, non a runtime.
 func TestDaemon_AskDecision(t *testing.T) {
 	socketPath, _ := startTestServer(t)
 
@@ -131,8 +133,11 @@ func TestDaemon_AskDecision(t *testing.T) {
 		AgentName: "claude-code",
 	})
 
-	if resp.Decision != string(policy.DecisionAsk) {
-		t.Errorf("atteso ask, ottenuto %s", resp.Decision)
+	if resp.Decision != string(policy.DecisionBlock) {
+		t.Errorf("atteso block per regola ask a runtime, ottenuto %s", resp.Decision)
+	}
+	if resp.Reason == "" {
+		t.Error("atteso reason non vuoto")
 	}
 }
 

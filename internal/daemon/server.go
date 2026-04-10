@@ -30,6 +30,7 @@ type Response struct {
 type Server struct {
 	socketPath string
 	policy     *policy.Policy
+	policyPath string
 	logger     *audit.Logger
 	listener   net.Listener
 	quit       chan struct{}
@@ -37,7 +38,15 @@ type Server struct {
 
 // NewServer crea il daemon e apre il Unix socket.
 func NewServer(socketPath string, p *policy.Policy, logger *audit.Logger) (*Server, error) {
-	// rimuovi socket residuo
+	return newServer(socketPath, "", p, logger)
+}
+
+// NewServerWithPolicyPath crea il daemon con il path della policy per allow_always.
+func NewServerWithPolicyPath(socketPath, policyPath string, p *policy.Policy, logger *audit.Logger) (*Server, error) {
+	return newServer(socketPath, policyPath, p, logger)
+}
+
+func newServer(socketPath, policyPath string, p *policy.Policy, logger *audit.Logger) (*Server, error) {
 	_ = os.Remove(socketPath)
 
 	ln, err := net.Listen("unix", socketPath)
@@ -48,6 +57,7 @@ func NewServer(socketPath string, p *policy.Policy, logger *audit.Logger) (*Serv
 	return &Server{
 		socketPath: socketPath,
 		policy:     p,
+		policyPath: policyPath,
 		logger:     logger,
 		listener:   ln,
 		quit:       make(chan struct{}),
@@ -94,21 +104,27 @@ func (s *Server) handle(conn net.Conn) {
 
 	result := s.policy.Evaluate(action.ToPolicyAction())
 
+	// "ask" a runtime si comporta come "block" — la configurazione avviene durante init
+	decision := result.Decision
+	if decision == policy.DecisionAsk {
+		decision = policy.DecisionBlock
+	}
+
 	event := audit.Event{
 		ID:        uuid.New().String(),
 		AgentName: req.AgentName,
 		WorkDir:   req.WorkDir,
 		Command:   req.Command,
-		Decision:  string(result.Decision),
+		Decision:  string(decision),
 		RuleID:    result.RuleID,
 		Reason:    result.Reason,
 	}
 	_ = s.logger.Write(event)
 
-	logDecision(result.Decision, req.Command, result.Reason)
+	logDecision(decision, req.Command, result.Reason)
 
 	resp := Response{
-		Decision: string(result.Decision),
+		Decision: string(decision),
 		Reason:   result.Reason,
 		RuleID:   result.RuleID,
 	}
