@@ -74,71 +74,8 @@ func TestSessionAllowlist_MultipleCommands(t *testing.T) {
 func TestSessionAllowlist_Idempotent(t *testing.T) {
 	sa := prompt.NewSessionAllowlist()
 	sa.Add("claude", "sudo ls")
-	sa.Add("claude", "sudo ls") // duplicato
+	sa.Add("claude", "sudo ls")
 	if !sa.IsAllowed("claude", "sudo ls") {
 		t.Error("atteso true dopo Add duplicato")
 	}
-}
-
-// --- BuildOsascriptArgs ---
-
-func TestBuildOsascriptArgs_ContainsCommand(t *testing.T) {
-	script := prompt.BuildDialogScript("claude", "sudo rm -rf /tmp", "sudo disabilitato")
-	if script == "" {
-		t.Error("script non deve essere vuoto")
-	}
-	// verifica che contenga i testi chiave
-	checkContains(t, script, "sudo rm -rf /tmp", "comando")
-	checkContains(t, script, "claude", "nome agente")
-	checkContains(t, script, "sudo disabilitato", "motivo")
-}
-
-func TestBuildOsascriptArgs_ContainsAllButtons(t *testing.T) {
-	script := prompt.BuildDialogScript("claude", "sudo ls", "test")
-	checkContains(t, script, "Blocca", "bottone Blocca")
-	checkContains(t, script, "Consenti", "bottone Consenti")
-	checkContains(t, script, "Sessione", "bottone Sessione")
-	checkContains(t, script, "Sempre", "bottone Sempre")
-}
-
-// --- ParseDialogResult ---
-
-func TestParseDialogResult(t *testing.T) {
-	cases := []struct {
-		input string
-		want  prompt.Response
-	}{
-		{"button returned:Blocca", prompt.ResponseBlock},
-		{"button returned:Consenti", prompt.ResponseAllowOnce},
-		{"button returned:Sessione", prompt.ResponseAllowSession},
-		{"button returned:Sempre", prompt.ResponseAllowAlways},
-		{"", prompt.ResponseBlock},                  // safe failure
-		{"button returned:unknown", prompt.ResponseBlock}, // safe failure
-	}
-	for _, c := range cases {
-		got := prompt.ParseDialogResult(c.input)
-		if got != c.want {
-			t.Errorf("ParseDialogResult(%q) = %v, atteso %v", c.input, got, c.want)
-		}
-	}
-}
-
-func checkContains(t *testing.T, s, sub, label string) {
-	t.Helper()
-	if !containsStr(s, sub) {
-		t.Errorf("script non contiene %s (%q)", label, sub)
-	}
-}
-
-func containsStr(s, sub string) bool {
-	return len(s) >= len(sub) && (s == sub || len(s) > 0 && containsSubstr(s, sub))
-}
-
-func containsSubstr(s, sub string) bool {
-	for i := 0; i <= len(s)-len(sub); i++ {
-		if s[i:i+len(sub)] == sub {
-			return true
-		}
-	}
-	return false
 }

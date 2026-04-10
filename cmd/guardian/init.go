@@ -7,22 +7,24 @@ import (
 	"path/filepath"
 
 	"github.com/pietroperona/agent-guardian/internal/launchagent"
+	"github.com/pietroperona/agent-guardian/internal/policy"
 	"github.com/pietroperona/agent-guardian/internal/shell"
 	"github.com/pietroperona/agent-guardian/internal/shim"
+	"github.com/pietroperona/agent-guardian/internal/wizard"
 	"github.com/spf13/cobra"
 )
 
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Inizializza Guardian nel progetto corrente",
-	Long:  "Crea la directory di configurazione, copia la policy di default e inietta l'hook nel profilo shell.",
+	Short: "Inizializza Guardian e configura la policy",
+	Long:  "Crea la directory di configurazione, esegue il wizard di policy e avvia il daemon automatico.",
 	RunE:  runInit,
 }
 
-var flagAdvanced bool
+var flagYes bool
 
 func init() {
-	initCmd.Flags().BoolVar(&flagAdvanced, "advanced", false, "modalità avanzata con sintassi regex per le regole")
+	initCmd.Flags().BoolVarP(&flagYes, "yes", "y", false, "accetta tutti i default senza wizard interattivo")
 	rootCmd.AddCommand(initCmd)
 }
 
@@ -36,7 +38,16 @@ func runInit(cmd *cobra.Command, args []string) error {
 	if err := copyDefaultPolicy(policyPath); err != nil {
 		return err
 	}
-	fmt.Printf("policy creata: %s\n", policyPath)
+
+	// wizard di configurazione policy (saltabile con --yes)
+	if !flagYes {
+		if err := runPolicyWizard(policyPath); err != nil {
+			return err
+		}
+	} else {
+		fmt.Println("policy: tutte le regole di default attive (--yes)")
+	}
+	fmt.Printf("policy: %s\n", policyPath)
 
 	rcPath, err := detectZshrc()
 	if err != nil {
@@ -49,23 +60,21 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Printf("hook iniettato in: %s\n", rcPath)
 
-	// installa PATH shims — copertura agent-agnostica (funziona anche con Claude Code)
+	// installa PATH shims
 	shimDir := shim.ShimDir(guardianDir)
 	shimBinary := filepath.Join(shimDir, shim.ShimBinaryName)
 	if err := installShims(guardianDir, shimBinary); err != nil {
-		// non bloccare l'init: gli shims sono opzionali se il binario non è ancora compilato
 		fmt.Printf("avviso: shims non installati (%v)\n", err)
 		fmt.Printf("        esegui 'make shim && guardian init' per abilitarli\n")
 	} else {
 		fmt.Printf("shims installati in: %s\n", shimDir)
 	}
 
-	// installa LaunchAgent — avvio automatico del daemon al login
+	// installa LaunchAgent
 	home, _ := os.UserHomeDir()
 	binaryPath, err := resolveAbsBinary()
 	if err != nil {
 		fmt.Printf("avviso: LaunchAgent non installato (%v)\n", err)
-		fmt.Printf("        sposta il binario guardian in un path fisso (es. /usr/local/bin/guardian) e riesegui init\n")
 	} else if err := launchagent.Install(home, binaryPath, guardianDir); err != nil {
 		fmt.Printf("avviso: LaunchAgent non installato (%v)\n", err)
 	} else {
@@ -76,24 +85,44 @@ func runInit(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// resolveAbsBinary restituisce il path assoluto del binario guardian in esecuzione.
-// Fallisce se il binario è in una directory temporanea (es. go run).
+// runPolicyWizard esegue il wizard interattivo e aggiorna la policy.
+// Le regole non selezionate dall'utente vengono impostate su "allow".
+func runPolicyWizard(policyPath string) error {
+	blockedRuleIDs, err := wizard.Run(os.Stdin, os.Stdout)
+	if err != nil {
+		return err
+	}
+
+	p, err := policy.Load(policyPath)
+	if err != nil {
+		return err
+	}
+
+	blockedSet := make(map[string]bool, len(blockedRuleIDs))
+	for _, id := range blockedRuleIDs {
+		blockedSet[id] = true
+	}
+
+	for i, rule := range p.Rules {
+		if !blockedSet[rule.ID] {
+			p.Rules[i].Decision = policy.DecisionAllow
+			p.Rules[i].Reason = "consentito dall'utente durante init"
+		}
+	}
+
+	return policy.Save(policyPath, p)
+}
+
 func resolveAbsBinary() (string, error) {
 	exe, err := os.Executable()
 	if err != nil {
 		return "", err
 	}
-	abs, err := filepath.EvalSymlinks(exe)
-	if err != nil {
-		return "", err
-	}
-	return abs, nil
+	return filepath.EvalSymlinks(exe)
 }
 
 func installShims(guardianDir, shimBinaryPath string) error {
-	// cerca il binario guardian-shim nella stessa dir del binario guardian o nel cwd
 	candidates := []string{
-		shimBinaryPath,
 		filepath.Join(filepath.Dir(os.Args[0]), shim.ShimBinaryName),
 		filepath.Join(".", shim.ShimBinaryName),
 	}
@@ -101,6 +130,9 @@ func installShims(guardianDir, shimBinaryPath string) error {
 		if _, err := os.Stat(candidate); err == nil {
 			return shim.Install(guardianDir, candidate)
 		}
+	}
+	if info, err := os.Stat(shimBinaryPath); err == nil && info.Size() > 0 {
+		return shim.CreateSymlinks(shim.ShimDir(guardianDir), shimBinaryPath)
 	}
 	return fmt.Errorf("binario %s non trovato — esegui 'make shim'", shim.ShimBinaryName)
 }
@@ -121,8 +153,6 @@ func copyDefaultPolicy(dest string) error {
 	if _, err := os.Stat(dest); err == nil {
 		return nil // già esiste, non sovrascrivere
 	}
-
-	// cerca la policy di default relativa al binario o nel path di sviluppo
 	candidates := []string{
 		"configs/default_policy.yaml",
 		filepath.Join(filepath.Dir(os.Args[0]), "configs", "default_policy.yaml"),
@@ -142,8 +172,6 @@ func detectZshrc() (string, error) {
 	if err != nil {
 		return "", err
 	}
-
-	// preferisci .zshrc se zsh è la shell corrente
 	if isZsh() {
 		return filepath.Join(home, ".zshrc"), nil
 	}
@@ -151,9 +179,9 @@ func detectZshrc() (string, error) {
 }
 
 func isZsh() bool {
-	shell := os.Getenv("SHELL")
-	if shell != "" {
-		return filepath.Base(shell) == "zsh"
+	s := os.Getenv("SHELL")
+	if s != "" {
+		return filepath.Base(s) == "zsh"
 	}
 	_, err := exec.LookPath("zsh")
 	return err == nil

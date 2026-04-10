@@ -124,6 +124,15 @@ func matches(rule Rule, action Action) bool {
 	return false
 }
 
+// Save serializza la policy e la scrive su file.
+func Save(path string, p *Policy) error {
+	data, err := yaml.Marshal(p)
+	if err != nil {
+		return fmt.Errorf("errore serializzazione policy: %w", err)
+	}
+	return os.WriteFile(path, data, 0600)
+}
+
 // AppendAllowRule aggiunge una regola allow permanente nella policy YAML per
 // il comando esatto dato. Se una regola identica esiste già, non duplica.
 func AppendAllowRule(policyPath, agentName, command string) error {

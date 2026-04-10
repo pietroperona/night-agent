@@ -86,6 +86,13 @@ func Install(guardianDir, shimBinaryPath string) error {
 }
 
 func copyFile(src, dst string, mode os.FileMode) error {
+	// evita di copiare un file su se stesso (O_TRUNC azzererebbe il file sorgente)
+	srcAbs, _ := filepath.EvalSymlinks(src)
+	dstAbs, _ := filepath.EvalSymlinks(dst)
+	if srcAbs != "" && srcAbs == dstAbs {
+		return nil
+	}
+
 	in, err := os.Open(src)
 	if err != nil {
 		return err

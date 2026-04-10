@@ -47,6 +47,9 @@ func GeneratePlist(binaryPath, guardianDir string) string {
     <key>KeepAlive</key>
     <true/>
 
+    <key>LimitLoadToSessionType</key>
+    <string>Aqua</string>
+
     <key>StandardOutPath</key>
     <string>%s</string>
 

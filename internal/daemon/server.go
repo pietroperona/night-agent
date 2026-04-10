@@ -10,7 +10,6 @@ import (
 	"github.com/pietroperona/agent-guardian/internal/audit"
 	"github.com/pietroperona/agent-guardian/internal/interception"
 	"github.com/pietroperona/agent-guardian/internal/policy"
-	"github.com/pietroperona/agent-guardian/internal/prompt"
 )
 
 // Request è il messaggio inviato dalla shell hook al daemon.
@@ -31,11 +30,10 @@ type Response struct {
 type Server struct {
 	socketPath string
 	policy     *policy.Policy
-	policyPath string // path per scrivere regole allow_always
+	policyPath string
 	logger     *audit.Logger
 	listener   net.Listener
 	quit       chan struct{}
-	session    *prompt.SessionAllowlist
 }
 
 // NewServer crea il daemon e apre il Unix socket.
@@ -49,7 +47,6 @@ func NewServerWithPolicyPath(socketPath, policyPath string, p *policy.Policy, lo
 }
 
 func newServer(socketPath, policyPath string, p *policy.Policy, logger *audit.Logger) (*Server, error) {
-	// rimuovi socket residuo
 	_ = os.Remove(socketPath)
 
 	ln, err := net.Listen("unix", socketPath)
@@ -64,7 +61,6 @@ func newServer(socketPath, policyPath string, p *policy.Policy, logger *audit.Lo
 		logger:     logger,
 		listener:   ln,
 		quit:       make(chan struct{}),
-		session:    prompt.NewSessionAllowlist(),
 	}, nil
 }
 
@@ -108,12 +104,10 @@ func (s *Server) handle(conn net.Conn) {
 
 	result := s.policy.Evaluate(action.ToPolicyAction())
 
-	finalDecision := result.Decision
-	finalReason := result.Reason
-
-	// gestione decisione ask: mostra prompt interattivo
-	if result.Decision == policy.DecisionAsk {
-		finalDecision, finalReason = s.handleAsk(req, result)
+	// "ask" a runtime si comporta come "block" — la configurazione avviene durante init
+	decision := result.Decision
+	if decision == policy.DecisionAsk {
+		decision = policy.DecisionBlock
 	}
 
 	event := audit.Event{
@@ -121,62 +115,20 @@ func (s *Server) handle(conn net.Conn) {
 		AgentName: req.AgentName,
 		WorkDir:   req.WorkDir,
 		Command:   req.Command,
-		Decision:  string(finalDecision),
+		Decision:  string(decision),
 		RuleID:    result.RuleID,
-		Reason:    finalReason,
+		Reason:    result.Reason,
 	}
 	_ = s.logger.Write(event)
 
-	logDecision(finalDecision, req.Command, finalReason)
+	logDecision(decision, req.Command, result.Reason)
 
 	resp := Response{
-		Decision: string(finalDecision),
-		Reason:   finalReason,
+		Decision: string(decision),
+		Reason:   result.Reason,
 		RuleID:   result.RuleID,
 	}
 	_ = json.NewEncoder(conn).Encode(resp)
-}
-
-// handleAsk gestisce la decisione "ask": controlla la session allowlist,
-// mostra il dialog macOS, e gestisce la risposta dell'utente.
-func (s *Server) handleAsk(req Request, result policy.EvalResult) (policy.Decision, string) {
-	agentName := req.AgentName
-	if agentName == "" {
-		agentName = "agente sconosciuto"
-	}
-
-	// controlla session allowlist
-	if s.session.IsAllowed(agentName, req.Command) {
-		return policy.DecisionAllow, "consentito per questa sessione"
-	}
-
-	// mostra dialog macOS
-	response := prompt.Ask(agentName, req.Command, result.Reason)
-
-	switch response {
-	case prompt.ResponseAllowOnce:
-		return policy.DecisionAllow, "consentito dall'utente (una volta)"
-
-	case prompt.ResponseAllowSession:
-		s.session.Add(agentName, req.Command)
-		return policy.DecisionAllow, "consentito per questa sessione"
-
-	case prompt.ResponseAllowAlways:
-		if s.policyPath != "" {
-			if err := policy.AppendAllowRule(s.policyPath, agentName, req.Command); err != nil {
-				fmt.Printf("[!] errore scrittura regola allow_always: %v\n", err)
-			} else {
-				// ricarica policy per applicare immediatamente
-				if p, err := policy.Load(s.policyPath); err == nil {
-					s.policy = p
-				}
-			}
-		}
-		return policy.DecisionAllow, "consentito sempre per questo agente"
-
-	default: // ResponseBlock
-		return policy.DecisionBlock, result.Reason + " (bloccato dall'utente)"
-	}
 }
 
 func writeError(conn net.Conn, msg string) {

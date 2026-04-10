@@ -122,9 +122,8 @@ func TestDaemon_AllowsNonMatchingCommand(t *testing.T) {
 	}
 }
 
-// TestDaemon_AskDecision verifica che un comando con policy "ask" venga gestito
-// dal prompt interattivo. In ambiente di test senza display (osascript fallisce)
-// il safe failure produce "block". Il comando NON deve restituire "ask" raw.
+// TestDaemon_AskDecision verifica che "ask" a runtime si comporti come "block".
+// La configurazione delle eccezioni avviene durante guardian init, non a runtime.
 func TestDaemon_AskDecision(t *testing.T) {
 	socketPath, _ := startTestServer(t)
 
@@ -134,17 +133,11 @@ func TestDaemon_AskDecision(t *testing.T) {
 		AgentName: "claude-code",
 	})
 
-	// in test senza display osascript fallisce → safe failure = block
-	// l'importante è che non sia restituito "ask" grezzo al client
-	if resp.Decision == string(policy.DecisionAsk) {
-		t.Error("il daemon non deve restituire 'ask' al client: deve risolvere internamente")
+	if resp.Decision != string(policy.DecisionBlock) {
+		t.Errorf("atteso block per regola ask a runtime, ottenuto %s", resp.Decision)
 	}
-	validDecisions := map[string]bool{
-		string(policy.DecisionAllow): true,
-		string(policy.DecisionBlock): true,
-	}
-	if !validDecisions[resp.Decision] {
-		t.Errorf("atteso allow o block, ottenuto %s", resp.Decision)
+	if resp.Reason == "" {
+		t.Error("atteso reason non vuoto")
 	}
 }
 
