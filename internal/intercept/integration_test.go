@@ -77,7 +77,7 @@ func TestDYLD_SafeFailure_DaemonDown(t *testing.T) {
 
 	// socket inesistente — daemon non in ascolto: safe failure = blocca
 	cmd := exec.Command(helperPath, "echo", "SHOULD_BE_BLOCKED")
-	cmd.Env = intercept.BuildEnv(os.Environ(), dylibPath, "/tmp/nonexistent-guardian.sock")
+	cmd.Env = intercept.BuildEnv(os.Environ(), dylibPath, "/tmp/nonexistent-night-agent.sock")
 
 	output, _ := cmd.CombinedOutput()
 	if containsString(string(output), "SHOULD_BE_BLOCKED") {

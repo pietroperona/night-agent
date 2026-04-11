@@ -40,8 +40,8 @@ func runAgent(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	guardianDir := filepath.Join(home, ".guardian")
-	socketPath := filepath.Join(guardianDir, "guardian.sock")
+	guardianDir := filepath.Join(home, ".night-agent")
+	socketPath := filepath.Join(guardianDir, "night-agent.sock")
 
 	if !isDaemonRunning(socketPath) {
 		return fmt.Errorf("daemon non in esecuzione — avvia prima 'night-agent start' in un altro terminale")

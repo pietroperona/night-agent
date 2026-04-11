@@ -29,9 +29,9 @@ func runStart(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	guardianDir := filepath.Join(home, ".guardian")
+	guardianDir := filepath.Join(home, ".night-agent")
 	policyPath := filepath.Join(guardianDir, "policy.yaml")
-	socketPath := filepath.Join(guardianDir, "guardian.sock")
+	socketPath := filepath.Join(guardianDir, "night-agent.sock")
 	logPath := filepath.Join(guardianDir, "audit.jsonl")
 
 	p, err := policy.Load(policyPath)

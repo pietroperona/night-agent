@@ -47,6 +47,6 @@ func runUninstall(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Println("\nnight-agent disinstallato.")
-	fmt.Printf("I dati in ~/.guardian/ sono stati preservati. Per rimuoverli: rm -rf ~/.guardian\n")
+	fmt.Printf("I dati in ~/.night-agent/ sono stati preservati. Per rimuoverli: rm -rf ~/.night-agent\n")
 	return nil
 }

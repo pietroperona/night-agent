@@ -88,7 +88,7 @@ func guardianLogPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	path := filepath.Join(home, ".guardian", "audit.jsonl")
+	path := filepath.Join(home, ".night-agent", "audit.jsonl")
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return "", fmt.Errorf("log non trovato in %s — esegui prima 'night-agent init'", path)
 	}

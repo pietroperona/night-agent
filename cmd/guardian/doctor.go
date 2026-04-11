@@ -24,9 +24,9 @@ func init() {
 
 func runDoctor(cmd *cobra.Command, args []string) error {
 	home, _ := os.UserHomeDir()
-	guardianDir := filepath.Join(home, ".guardian")
+	guardianDir := filepath.Join(home, ".night-agent")
 	policyPath := filepath.Join(guardianDir, "policy.yaml")
-	socketPath := filepath.Join(guardianDir, "guardian.sock")
+	socketPath := filepath.Join(guardianDir, "night-agent.sock")
 
 	allOK := true
 
@@ -46,7 +46,7 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 	fmt.Println("Night Agent — diagnostica:")
 
 	_, errDir := os.Stat(guardianDir)
-	check("directory ~/.guardian", errDir == nil, guardianDir)
+	check("directory ~/.night-agent", errDir == nil, guardianDir)
 
 	_, errPolicy := os.Stat(policyPath)
 	check("policy.yaml", errPolicy == nil, policyPath)

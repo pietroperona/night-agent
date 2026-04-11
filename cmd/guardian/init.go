@@ -54,7 +54,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	socketPath := filepath.Join(guardianDir, "guardian.sock")
+	socketPath := filepath.Join(guardianDir, "night-agent.sock")
 	injected, err := shell.Inject(rcPath, socketPath)
 	if err != nil {
 		return fmt.Errorf("errore iniezione hook shell: %w", err)
@@ -151,7 +151,20 @@ func ensureGuardianDir() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("impossibile determinare la home directory: %w", err)
 	}
-	dir := filepath.Join(home, ".guardian")
+	dir := filepath.Join(home, ".night-agent")
+
+	// Migrazione automatica da ~/.guardian (installazione precedente)
+	oldDir := filepath.Join(home, ".guardian")
+	if _, errOld := os.Stat(oldDir); errOld == nil {
+		if _, errNew := os.Stat(dir); os.IsNotExist(errNew) {
+			if errRename := os.Rename(oldDir, dir); errRename == nil {
+				fmt.Printf("migrazione: ~/.guardian → ~/.night-agent\n")
+			} else {
+				fmt.Printf("avviso: migrazione ~/.guardian fallita (%v) — procedo con nuova directory\n", errRename)
+			}
+		}
+	}
+
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return "", fmt.Errorf("impossibile creare %s: %w", dir, err)
 	}

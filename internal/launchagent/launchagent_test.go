@@ -11,7 +11,7 @@ import (
 
 func TestPlistPath(t *testing.T) {
 	path := launchagent.PlistPath("/home/user")
-	expected := "/home/user/Library/LaunchAgents/com.guardian.daemon.plist"
+	expected := "/home/user/Library/LaunchAgents/com.night-agent.daemon.plist"
 	if path != expected {
 		t.Errorf("atteso %s, ottenuto %s", expected, path)
 	}
@@ -19,8 +19,8 @@ func TestPlistPath(t *testing.T) {
 
 func TestGeneratePlist_ContainsLabel(t *testing.T) {
 	plist := launchagent.GeneratePlist("/usr/local/bin/guardian", "/home/user/.guardian")
-	if !strings.Contains(plist, "com.guardian.daemon") {
-		t.Error("plist non contiene il label com.guardian.daemon")
+	if !strings.Contains(plist, "com.night-agent.daemon") {
+		t.Error("plist non contiene il label com.night-agent.daemon")
 	}
 }
 
@@ -64,7 +64,7 @@ func TestInstall_WritesFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	plistPath := filepath.Join(launchAgentsDir, "com.guardian.daemon.plist")
+	plistPath := filepath.Join(launchAgentsDir, "com.night-agent.daemon.plist")
 	plist := launchagent.GeneratePlist("/usr/local/bin/guardian", dir+"/.guardian")
 	if err := os.WriteFile(plistPath, []byte(plist), 0644); err != nil {
 		t.Fatalf("errore scrittura plist: %v", err)
@@ -74,7 +74,7 @@ func TestInstall_WritesFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("errore lettura plist: %v", err)
 	}
-	if !strings.Contains(string(data), "com.guardian.daemon") {
+	if !strings.Contains(string(data), "com.night-agent.daemon") {
 		t.Error("file plist scritto non contiene il label atteso")
 	}
 }

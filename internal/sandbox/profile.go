@@ -9,7 +9,7 @@ import (
 )
 
 // ProfileFileName è il nome del file di configurazione sandbox per progetto.
-const ProfileFileName = ".guardian.yaml"
+const ProfileFileName = ".night-agent.yaml"
 
 // Profile contiene la configurazione sandbox specifica per un progetto.
 // Viene letta da <workDir>/.guardian.yaml e ha priorità sui default globali,

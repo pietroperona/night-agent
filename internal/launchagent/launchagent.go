@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 )
 
-const label = "com.guardian.daemon"
+const label = "com.night-agent.daemon"
 
 // PlistPath restituisce il path del file plist dato la home directory.
 func PlistPath(homeDir string) string {
@@ -22,7 +22,7 @@ func IsInstalled(homeDir string) bool {
 
 // GeneratePlist genera il contenuto XML del plist per il LaunchAgent.
 // binaryPath è il path assoluto del binario guardian.
-// guardianDir è ~/.guardian (usato per stdout/stderr log).
+// guardianDir è ~/.night-agent (usato per stdout/stderr log).
 func GeneratePlist(binaryPath, guardianDir string) string {
 	stdoutLog := filepath.Join(guardianDir, "daemon.log")
 	stderrLog := filepath.Join(guardianDir, "daemon-error.log")

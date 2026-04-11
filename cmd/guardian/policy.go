@@ -68,7 +68,7 @@ func policyPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, ".guardian", "policy.yaml"), nil
+	return filepath.Join(home, ".night-agent", "policy.yaml"), nil
 }
 
 func runPolicyList(cmd *cobra.Command, args []string) error {

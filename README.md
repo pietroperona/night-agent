@@ -19,7 +19,7 @@ Agente AI (Claude Code, python3, bash...)
   block   → blocca con messaggio
   sandbox → esegue in container Docker isolato
         ↓
-  [Audit log]  ←  ogni evento registrato in ~/.guardian/audit.jsonl
+  [Audit log]  ←  ogni evento registrato in ~/.night-agent/audit.jsonl
 ```
 
 Il daemon gira in background, avviato automaticamente al login tramite LaunchAgent macOS.
@@ -59,9 +59,9 @@ Produce tre binari nella root del progetto:
 ```
 
 Il wizard guida nella configurazione delle regole di policy. Al termine:
-- La policy viene salvata in `~/.guardian/policy.yaml`
+- La policy viene salvata in `~/.night-agent/policy.yaml`
 - Il daemon viene registrato come LaunchAgent (avvio automatico al login)
-- Gli shims vengono installati in `~/.guardian/shims/`
+- Gli shims vengono installati in `~/.night-agent/shims/`
 
 ---
 
@@ -101,7 +101,7 @@ Output:
 
 ```
 Guardian — diagnostica:
-  ✓ directory ~/.guardian
+  ✓ directory ~/.night-agent
   ✓ policy.yaml
   ✓ hook shell (.zshrc)
   ✓ daemon in esecuzione

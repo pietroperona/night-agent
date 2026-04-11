@@ -10,7 +10,7 @@ import (
 
 func TestBuildEnv_SetsDYLD(t *testing.T) {
 	dylibPath := "/tmp/guardian-intercept.dylib"
-	socketPath := "/tmp/guardian.sock"
+	socketPath := "/tmp/night-agent.sock"
 
 	env := intercept.BuildEnv(os.Environ(), dylibPath, socketPath)
 
@@ -26,7 +26,7 @@ func TestBuildEnv_SetsDYLD(t *testing.T) {
 }
 
 func TestBuildEnv_SetsSocketPath(t *testing.T) {
-	socketPath := "/tmp/guardian.sock"
+	socketPath := "/tmp/night-agent.sock"
 	env := intercept.BuildEnv(os.Environ(), "/tmp/test.dylib", socketPath)
 
 	found := false
@@ -42,7 +42,7 @@ func TestBuildEnv_SetsSocketPath(t *testing.T) {
 
 func TestBuildEnv_PreservesExistingEnv(t *testing.T) {
 	base := []string{"HOME=/home/user", "PATH=/usr/bin:/bin"}
-	env := intercept.BuildEnv(base, "/tmp/test.dylib", "/tmp/guardian.sock")
+	env := intercept.BuildEnv(base, "/tmp/test.dylib", "/tmp/night-agent.sock")
 
 	foundHome := false
 	for _, e := range env {
@@ -58,7 +58,7 @@ func TestBuildEnv_PreservesExistingEnv(t *testing.T) {
 func TestBuildEnv_OverridesDYLDIfAlreadySet(t *testing.T) {
 	base := []string{"DYLD_INSERT_LIBRARIES=/old/lib.dylib"}
 	newDylib := "/new/guardian-intercept.dylib"
-	env := intercept.BuildEnv(base, newDylib, "/tmp/guardian.sock")
+	env := intercept.BuildEnv(base, newDylib, "/tmp/night-agent.sock")
 
 	count := 0
 	for _, e := range env {
