@@ -33,6 +33,15 @@ _guardian_preexec() {
       echo "guardian: comando bloccato — $reason" >&2
       return 1
     fi
+    if [[ "$decision" == "sandbox" ]]; then
+      local reason
+      reason=$(echo "$response" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("reason",""))' 2>/dev/null)
+      echo "guardian: esecuzione in sandbox — $reason" >&2
+      local output
+      output=$(echo "$response" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("output",""), end="")' 2>/dev/null)
+      [[ -n "$output" ]] && echo "$output"
+      return 1
+    fi
   fi
 }
 autoload -Uz add-zsh-hook
@@ -42,20 +51,22 @@ add-zsh-hook preexec _guardian_preexec
 
 // Inject aggiunge l'hook guardian al file di profilo shell specificato.
 // L'operazione è idempotente: se l'hook è già presente non viene duplicato.
-func Inject(rcPath, socketPath string) error {
+// Restituisce (true, nil) se l'hook è stato iniettato ora,
+// (false, nil) se era già presente, (false, err) in caso di errore.
+func Inject(rcPath, socketPath string) (bool, error) {
 	content, err := os.ReadFile(rcPath)
 	if err != nil {
-		return fmt.Errorf("impossibile leggere %s: %w", rcPath, err)
+		return false, fmt.Errorf("impossibile leggere %s: %w", rcPath, err)
 	}
 
 	if strings.Contains(string(content), beginMarker) {
-		return nil // già iniettato
+		return false, nil // già iniettato
 	}
 
 	hook := fmt.Sprintf(hookTemplate, socketPath)
 	updated := string(content) + hook
 
-	return os.WriteFile(rcPath, []byte(updated), 0600)
+	return true, os.WriteFile(rcPath, []byte(updated), 0600)
 }
 
 // Remove elimina il blocco guardian dal file di profilo shell.

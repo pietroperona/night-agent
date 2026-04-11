@@ -40,3 +40,27 @@ rules:
     match_type: glob
     decision: ask
     reason: "push su branch protetto richiede conferma"
+
+  # --- Regole sandbox (Ciclo 2) ---
+
+  - id: sandbox_shell_scripts
+    when:
+      action_type: shell
+      command_matches: ["bash *.sh", "sh *.sh", "zsh *.sh"]
+    match_type: glob
+    decision: sandbox
+    sandbox:
+      image: "alpine:3.20"
+      network: "none"
+    reason: "script shell eseguito in ambiente isolato"
+
+  - id: sandbox_python_scripts
+    when:
+      action_type: shell
+      command_matches: ["python *.py", "python3 *.py"]
+    match_type: glob
+    decision: sandbox
+    sandbox:
+      image: "python:3.12-alpine"
+      network: "none"
+    reason: "script Python eseguito in ambiente isolato"

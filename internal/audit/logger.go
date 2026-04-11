@@ -23,6 +23,10 @@ type Event struct {
 	RuleID       string    `json:"rule_id,omitempty"`
 	Reason       string    `json:"reason,omitempty"`
 	UserOverride bool      `json:"user_override,omitempty"`
+	// Campi sandbox (Ciclo 2)
+	Sandboxed       bool   `json:"sandboxed,omitempty"`
+	SandboxImage    string `json:"sandbox_image,omitempty"`
+	SandboxExitCode *int   `json:"sandbox_exit_code,omitempty"`
 }
 
 // Filter specifica criteri di filtro per ReadFiltered.

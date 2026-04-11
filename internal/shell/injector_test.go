@@ -14,8 +14,12 @@ const testSocketPath = "/tmp/guardian-test.sock"
 func TestInject_AddsHookToZshrc(t *testing.T) {
 	zshrc := writeTempRC(t, "# existing config\nexport PATH=$PATH:/usr/local/bin\n")
 
-	if err := shell.Inject(zshrc, testSocketPath); err != nil {
+	injected, err := shell.Inject(zshrc, testSocketPath)
+	if err != nil {
 		t.Fatalf("errore iniezione: %v", err)
+	}
+	if !injected {
+		t.Error("atteso injected=true alla prima iniezione")
 	}
 
 	content, _ := os.ReadFile(zshrc)
@@ -34,11 +38,15 @@ func TestInject_AddsHookToZshrc(t *testing.T) {
 func TestInject_Idempotent(t *testing.T) {
 	zshrc := writeTempRC(t, "# existing config\n")
 
-	if err := shell.Inject(zshrc, testSocketPath); err != nil {
+	if _, err := shell.Inject(zshrc, testSocketPath); err != nil {
 		t.Fatalf("prima iniezione fallita: %v", err)
 	}
-	if err := shell.Inject(zshrc, testSocketPath); err != nil {
+	injected, err := shell.Inject(zshrc, testSocketPath)
+	if err != nil {
 		t.Fatalf("seconda iniezione fallita: %v", err)
+	}
+	if injected {
+		t.Error("atteso injected=false alla seconda iniezione (già presente)")
 	}
 
 	content, _ := os.ReadFile(zshrc)
@@ -49,7 +57,7 @@ func TestInject_Idempotent(t *testing.T) {
 }
 
 func TestInject_FileNotFound(t *testing.T) {
-	err := shell.Inject("/nonexistent/path/.zshrc", testSocketPath)
+	_, err := shell.Inject("/nonexistent/path/.zshrc", testSocketPath)
 	if err == nil {
 		t.Fatal("atteso errore per file mancante, ottenuto nil")
 	}
@@ -58,7 +66,7 @@ func TestInject_FileNotFound(t *testing.T) {
 func TestRemove_RemovesHookFromZshrc(t *testing.T) {
 	zshrc := writeTempRC(t, "# existing config\n")
 
-	_ = shell.Inject(zshrc, testSocketPath)
+	_, _ = shell.Inject(zshrc, testSocketPath)
 	if err := shell.Remove(zshrc); err != nil {
 		t.Fatalf("errore rimozione: %v", err)
 	}
@@ -82,7 +90,7 @@ func TestRemove_NoopIfNotInjected(t *testing.T) {
 
 func TestIsInjected_True(t *testing.T) {
 	zshrc := writeTempRC(t, "")
-	_ = shell.Inject(zshrc, testSocketPath)
+	_, _ = shell.Inject(zshrc, testSocketPath)
 
 	if !shell.IsInjected(zshrc) {
 		t.Error("atteso IsInjected=true dopo l'iniezione")
