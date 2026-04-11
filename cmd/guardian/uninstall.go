@@ -12,7 +12,7 @@ import (
 
 var uninstallCmd = &cobra.Command{
 	Use:   "uninstall",
-	Short: "Rimuove Guardian dal sistema",
+	Short: "Rimuove Night Agent dal sistema",
 	Long:  "Ferma il daemon, rimuove il LaunchAgent e rimuove l'hook dallo shell profile.",
 	RunE:  runUninstall,
 }
@@ -46,7 +46,7 @@ func runUninstall(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	fmt.Println("\nguardian disinstallato.")
+	fmt.Println("\nnight-agent disinstallato.")
 	fmt.Printf("I dati in ~/.guardian/ sono stati preservati. Per rimuoverli: rm -rf ~/.guardian\n")
 	return nil
 }

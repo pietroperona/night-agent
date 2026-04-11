@@ -81,11 +81,11 @@ func runPolicyList(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("errore caricamento policy: %w", err)
 	}
 	fmt.Print(policyeditor.RenderTable(p))
-	fmt.Printf("  %sguardian policy toggle <id>%s  per attivare/disattivare\n",
+	fmt.Printf("  %snight-agent policy toggle <id>%s  per attivare/disattivare\n",
 		ansiDim, ansiReset)
-	fmt.Printf("  %sguardian policy add%s          per aggiungere una regola\n",
+	fmt.Printf("  %snight-agent policy add%s          per aggiungere una regola\n",
 		ansiDim, ansiReset)
-	fmt.Printf("  %sguardian policy remove <id>%s  per rimuovere una regola\n\n",
+	fmt.Printf("  %snight-agent policy remove <id>%s  per rimuovere una regola\n\n",
 		ansiDim, ansiReset)
 	return nil
 }
@@ -121,7 +121,7 @@ func runPolicyToggle(cmd *cobra.Command, args []string) error {
 		arrow = fmt.Sprintf("%s✓ allow%s → %s✗ block%s", ansiGreen, ansiReset, ansiRed, ansiReset)
 	}
 	fmt.Printf("\n  %s%s%s  %s\n\n", ansiBold, ruleID, ansiReset, arrow)
-	fmt.Printf("  %sriavvia il daemon per applicare le modifiche: guardian start%s\n\n",
+	fmt.Printf("  %sriavvia il daemon per applicare le modifiche: night-agent start%s\n\n",
 		ansiDim, ansiReset)
 	return nil
 }

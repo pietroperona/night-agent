@@ -8,8 +8,8 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "guardian",
-	Short: "AI Guardian — runtime security layer for AI agents",
+	Use:   "night-agent",
+	Short: "Night Agent — runtime security layer for AI agents",
 }
 
 func main() {

@@ -49,40 +49,40 @@ func runHelp(cmd *cobra.Command, args []string) {
 
 	// Setup
 	section("Setup")
-	command("guardian init", "Installa Guardian, esegui il wizard di policy")
-	command("guardian init --yes", "Installa con tutti i default senza wizard")
-	command("guardian uninstall", "Rimuovi Guardian dal sistema")
+	command("night-agent init", "Installa Guardian, esegui il wizard di policy")
+	command("night-agent init --yes", "Installa con tutti i default senza wizard")
+	command("night-agent uninstall", "Rimuovi Night Agent dal sistema")
 	fmt.Fprintln(w)
 
 	// Runtime
 	section("Runtime")
-	command("guardian start", "Avvia il daemon in foreground (terminale dedicato)")
-	command("guardian run <agente>", "Avvia un agente AI sotto protezione")
-	sub("guardian run claude", "Claude Code")
-	sub("guardian run python3 agent.py", "Script Python")
-	sub("guardian run node agent.js", "Script Node.js")
+	command("night-agent start", "Avvia il daemon in foreground (terminale dedicato)")
+	command("night-agent run <agente>", "Avvia un agente AI sotto protezione")
+	sub("night-agent run claude", "Claude Code")
+	sub("night-agent run python3 agent.py", "Script Python")
+	sub("night-agent run node agent.js", "Script Node.js")
 	fmt.Fprintln(w)
 
 	// Policy
 	section("Policy")
-	command("guardian policy list", "Mostra tutte le regole e il loro stato")
-	command("guardian policy toggle <id>", "Attiva/disattiva una regola (block ↔ allow)")
-	command("guardian policy add", "Aggiungi una nuova regola in modo interattivo")
-	command("guardian policy remove <id>", "Rimuovi una regola dalla policy")
+	command("night-agent policy list", "Mostra tutte le regole e il loro stato")
+	command("night-agent policy toggle <id>", "Attiva/disattiva una regola (block ↔ allow)")
+	command("night-agent policy add", "Aggiungi una nuova regola in modo interattivo")
+	command("night-agent policy remove <id>", "Rimuovi una regola dalla policy")
 	fmt.Fprintln(w)
 
 	// Logs
 	section("Logs")
-	command("guardian logs", "Mostra l'audit trail degli ultimi eventi")
-	sub("guardian logs --limit 20", "Ultimi N eventi")
-	sub("guardian logs --decision block", "Filtra per decisione (block/allow)")
-	sub("guardian logs --type shell", "Filtra per tipo (shell/git/file)")
-	sub("guardian logs --json", "Output raw JSONL")
+	command("night-agent logs", "Mostra l'audit trail degli ultimi eventi")
+	sub("night-agent logs --limit 20", "Ultimi N eventi")
+	sub("night-agent logs --decision block", "Filtra per decisione (block/allow)")
+	sub("night-agent logs --type shell", "Filtra per tipo (shell/git/file)")
+	sub("night-agent logs --json", "Output raw JSONL")
 	fmt.Fprintln(w)
 
 	// Diagnostica
 	section("Diagnostica")
-	command("guardian doctor", "Verifica che tutto sia configurato correttamente")
+	command("night-agent doctor", "Verifica che tutto sia configurato correttamente")
 	fmt.Fprintln(w)
 
 	fmt.Fprintln(w, ansiDim+"  ─────────────────────────────────────────────────────────"+ansiReset)

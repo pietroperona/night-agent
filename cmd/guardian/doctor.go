@@ -14,7 +14,7 @@ import (
 
 var doctorCmd = &cobra.Command{
 	Use:   "doctor",
-	Short: "Verifica lo stato dell'installazione di Guardian",
+	Short: "Verifica lo stato dell'installazione di Night Agent",
 	RunE:  runDoctor,
 }
 
@@ -43,7 +43,7 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	fmt.Println("Guardian — diagnostica:")
+	fmt.Println("Night Agent — diagnostica:")
 
 	_, errDir := os.Stat(guardianDir)
 	check("directory ~/.guardian", errDir == nil, guardianDir)
@@ -71,9 +71,9 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 
 	fmt.Println()
 	if allOK {
-		fmt.Println("tutto ok — guardian è operativo")
+		fmt.Println("tutto ok — night-agent è operativo")
 	} else {
-		fmt.Println("alcuni controlli falliti — esegui 'guardian init' per configurare")
+		fmt.Println("alcuni controlli falliti — esegui 'night-agent init' per configurare")
 	}
 	return nil
 }

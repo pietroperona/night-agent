@@ -17,7 +17,7 @@ var sandboxCmd = &cobra.Command{
 
 var sandboxResetCmd = &cobra.Command{
 	Use:   "reset",
-	Short: "Ferma tutti i container sandbox attivi gestiti da Guardian",
+	Short: "Ferma tutti i container sandbox attivi gestiti da Night Agent",
 	RunE:  runSandboxReset,
 }
 
@@ -30,9 +30,9 @@ Il workspace corrente viene montato nel container.
 La rete è disabilitata per default (--network none).
 
 Esempi:
-  guardian sandbox run "python migration_script.py"
-  guardian sandbox run "bash deploy.sh"
-  guardian sandbox run --image alpine:3.20 --network bridge "curl https://example.com"`,
+  night-agent sandbox run "python migration_script.py"
+  night-agent sandbox run "bash deploy.sh"
+  night-agent sandbox run --image alpine:3.20 --network bridge "curl https://example.com"`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: runSandbox,
 }

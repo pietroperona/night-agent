@@ -13,7 +13,7 @@ import (
 
 var runCmd = &cobra.Command{
 	Use:   "run <agente> [args...]",
-	Short: "Avvia un agente AI sotto la protezione di Guardian",
+	Short: "Avvia un agente AI sotto la protezione di Night Agent",
 	Long: `Avvia un agente AI con protezione attiva via due meccanismi:
 
   1. PATH shims — intercetta i comandi eseguiti dall'agente via shell
@@ -23,9 +23,9 @@ var runCmd = &cobra.Command{
      (funziona per agenti senza Hardened Runtime: node, python3, ecc.)
 
 Esempi:
-  guardian run claude
-  guardian run python3 my_agent.py
-  guardian run node agent.js`,
+  night-agent run claude
+  night-agent run python3 my_agent.py
+  night-agent run node agent.js`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: runAgent,
 }
@@ -44,7 +44,7 @@ func runAgent(cmd *cobra.Command, args []string) error {
 	socketPath := filepath.Join(guardianDir, "guardian.sock")
 
 	if !isDaemonRunning(socketPath) {
-		return fmt.Errorf("daemon non in esecuzione — avvia prima 'guardian start' in un altro terminale")
+		return fmt.Errorf("daemon non in esecuzione — avvia prima 'night-agent start' in un altro terminale")
 	}
 
 	shimDir := shim.ShimDir(guardianDir)
@@ -57,17 +57,17 @@ func runAgent(cmd *cobra.Command, args []string) error {
 		env = shim.PrependPath(env, shimDir)
 		env = append(env, "GUARDIAN_SHIM_DIR="+shimDir)
 		env = append(env, "GUARDIAN_SOCKET="+socketPath)
-		fmt.Printf("guardian: shims    → %s\n", shimDir)
+		fmt.Printf("night-agent: shims    → %s\n", shimDir)
 	} else {
-		fmt.Printf("guardian: avviso — shim dir non trovata (%s)\n", shimDir)
-		fmt.Printf("guardian: esegui 'make shim' per abilitare l'interception PATH\n")
+		fmt.Printf("night-agent: avviso — shim dir non trovata (%s)\n", shimDir)
+		fmt.Printf("night-agent: esegui 'make shim' per abilitare l'interception PATH\n")
 	}
 
 	// DYLD: copertura aggiuntiva per agenti senza Hardened Runtime (node, python3...)
 	binaryDir := filepath.Dir(os.Args[0])
 	if dylibPath, err := findDylibCandidates(binaryDir); err == nil {
 		env = intercept.BuildEnv(env, dylibPath, socketPath)
-		fmt.Printf("guardian: dylib    → %s\n", dylibPath)
+		fmt.Printf("night-agent: dylib    → %s\n", dylibPath)
 	}
 
 	agentBinary, err := exec.LookPath(args[0])
@@ -75,8 +75,8 @@ func runAgent(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("agente '%s' non trovato nel PATH: %w", args[0], err)
 	}
 
-	fmt.Printf("guardian: avvio '%s' con interception attiva\n", args[0])
-	fmt.Printf("guardian: socket   → %s\n\n", socketPath)
+	fmt.Printf("night-agent: avvio '%s' con interception attiva\n", args[0])
+	fmt.Printf("night-agent: socket   → %s\n\n", socketPath)
 
 	agentCmd := exec.Command(agentBinary, args[1:]...)
 	agentCmd.Env = env

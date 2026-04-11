@@ -16,7 +16,7 @@ import (
 
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Inizializza Guardian e configura la policy",
+	Short: "Inizializza Night Agent e configura la policy",
 	Long:  "Crea la directory di configurazione, esegue il wizard di policy e avvia il daemon automatico.",
 	RunE:  runInit,
 }
@@ -70,7 +70,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	shimBinary := filepath.Join(shimDir, shim.ShimBinaryName)
 	if err := installShims(guardianDir, shimBinary); err != nil {
 		fmt.Printf("avviso: shims non installati (%v)\n", err)
-		fmt.Printf("        esegui 'make shim && guardian init' per abilitarli\n")
+		fmt.Printf("        esegui 'make shim && night-agent init' per abilitarli\n")
 	} else {
 		fmt.Printf("shims installati in: %s\n", shimDir)
 	}
@@ -87,9 +87,9 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 
 	if injected {
-		fmt.Println("\nguardian inizializzato. Riavvia il terminale o esegui: source " + rcPath)
+		fmt.Println("\nnight-agent inizializzato. Riavvia il terminale o esegui: source " + rcPath)
 	} else {
-		fmt.Println("\nguardian aggiornato.")
+		fmt.Println("\nnight-agent aggiornato.")
 	}
 	return nil
 }

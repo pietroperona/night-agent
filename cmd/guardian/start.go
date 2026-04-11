@@ -50,7 +50,7 @@ func runStart(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("errore avvio daemon: %w", err)
 	}
 
-	fmt.Printf("guardian in ascolto su %s\n", socketPath)
+	fmt.Printf("night-agent in ascolto su %s\n", socketPath)
 
 	go srv.Serve()
 
@@ -58,7 +58,7 @@ func runStart(cmd *cobra.Command, args []string) error {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	fmt.Println("\nguardian fermato")
+	fmt.Println("\nnight-agent fermato")
 	srv.Stop()
 	return nil
 }
