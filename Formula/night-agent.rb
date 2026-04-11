@@ -6,12 +6,6 @@ class NightAgent < Formula
   license "MIT"
   head "https://github.com/pietroperona/night-agent.git", branch: "main"
 
-  bottle do
-    root_url "https://github.com/pietroperona/homebrew-night-agent/releases/download/night-agent-0.2.2"
-    sha256 cellar: :any_skip_relocation, arm64_sequoia: "PLACEHOLDER_ARM64"
-    sha256 cellar: :any_skip_relocation, ventura:       "PLACEHOLDER_X86_64"
-  end
-
   depends_on "go" => :build
   depends_on :macos
 
