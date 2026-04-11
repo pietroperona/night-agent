@@ -55,10 +55,15 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 
 	socketPath := filepath.Join(guardianDir, "guardian.sock")
-	if err := shell.Inject(rcPath, socketPath); err != nil {
+	injected, err := shell.Inject(rcPath, socketPath)
+	if err != nil {
 		return fmt.Errorf("errore iniezione hook shell: %w", err)
 	}
-	fmt.Printf("hook iniettato in: %s\n", rcPath)
+	if injected {
+		fmt.Printf("hook iniettato in: %s\n", rcPath)
+	} else {
+		fmt.Printf("hook shell già presente in: %s\n", rcPath)
+	}
 
 	// installa PATH shims
 	shimDir := shim.ShimDir(guardianDir)
@@ -81,7 +86,11 @@ func runInit(cmd *cobra.Command, args []string) error {
 		fmt.Printf("LaunchAgent installato: avvio automatico al login attivo\n")
 	}
 
-	fmt.Println("\nguardian inizializzato. Riavvia il terminale o esegui: source " + rcPath)
+	if injected {
+		fmt.Println("\nguardian inizializzato. Riavvia il terminale o esegui: source " + rcPath)
+	} else {
+		fmt.Println("\nguardian aggiornato.")
+	}
 	return nil
 }
 

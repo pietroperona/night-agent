@@ -34,12 +34,19 @@ type Condition struct {
 	PathMatches    []string `yaml:"path_matches"`
 }
 
+// SandboxConfig configura il container Docker per le regole con decision: sandbox.
+type SandboxConfig struct {
+	Image   string `yaml:"image"`   // immagine Docker, es: "alpine:3.20"
+	Network string `yaml:"network"` // "none" (default) o "bridge"
+}
+
 type Rule struct {
-	ID        string    `yaml:"id"`
-	When      Condition `yaml:"when"`
-	MatchType MatchType `yaml:"match_type"`
-	Decision  Decision  `yaml:"decision"`
-	Reason    string    `yaml:"reason"`
+	ID        string         `yaml:"id"`
+	When      Condition      `yaml:"when"`
+	MatchType MatchType      `yaml:"match_type"`
+	Decision  Decision       `yaml:"decision"`
+	Reason    string         `yaml:"reason"`
+	Sandbox   *SandboxConfig `yaml:"sandbox,omitempty"`
 }
 
 type Policy struct {
@@ -57,6 +64,7 @@ type EvalResult struct {
 	Decision Decision
 	RuleID   string
 	Reason   string
+	Sandbox  *SandboxConfig // non nil se la regola ha decision: sandbox
 }
 
 func Load(path string) (*Policy, error) {
@@ -88,6 +96,7 @@ func (p *Policy) Evaluate(action Action) EvalResult {
 				Decision: rule.Decision,
 				RuleID:   rule.ID,
 				Reason:   rule.Reason,
+				Sandbox:  rule.Sandbox,
 			}
 		}
 	}

@@ -34,14 +34,102 @@
 #define MAX_RESP     4096
 
 /*
- * Effettua la verifica con il daemon Guardian.
- * Ritorna 1 se il comando è consentito, 0 se bloccato o in caso di errore.
+ * Risultato della verifica con il daemon Guardian.
+ *   GUARDIAN_ALLOW   = 1  → esegui il comando normalmente
+ *   GUARDIAN_BLOCK   = 0  → blocca, stampa errore
+ *   GUARDIAN_SANDBOX = -1 → il daemon ha già eseguito in Docker, esci con exit_code
  */
-static int guardian_check(const char *socket_path, const char *command)
+#define GUARDIAN_ALLOW   1
+#define GUARDIAN_BLOCK   0
+#define GUARDIAN_SANDBOX (-1)
+
+/*
+ * Estrae il valore stringa di "reason" dal JSON della risposta.
+ * Scrive al massimo buf_size-1 caratteri in buf. Ritorna buf.
+ */
+static char *parse_reason(const char *resp, char *buf, size_t buf_size)
 {
+    buf[0] = '\0';
+    const char *key = "\"reason\":\"";
+    const char *p = strstr(resp, key);
+    if (!p) return buf;
+    p += strlen(key);
+
+    size_t i = 0;
+    while (*p && *p != '"' && i < buf_size - 1) {
+        if (*p == '\\' && *(p+1) == '"') {
+            buf[i++] = '"';
+            p += 2;
+        } else if (*p == '\\' && *(p+1) == 'n') {
+            buf[i++] = ' ';
+            p += 2;
+        } else {
+            buf[i++] = *p++;
+        }
+    }
+    buf[i] = '\0';
+    return buf;
+}
+
+/*
+ * Estrae il valore intero di "exit_code" dal JSON della risposta.
+ * Ritorna 0 se non trovato o non parsabile.
+ */
+static int parse_exit_code(const char *resp)
+{
+    const char *key = "\"exit_code\":";
+    const char *p = strstr(resp, key);
+    if (!p) return 0;
+    p += strlen(key);
+    /* salta spazi */
+    while (*p == ' ') p++;
+    return atoi(p);
+}
+
+/*
+ * Stampa il campo "output" dalla risposta JSON (stdout del container).
+ * Il valore è racchiuso tra virgolette ed usa \n come escape.
+ */
+static void print_sandbox_output(const char *resp)
+{
+    const char *key = "\"output\":\"";
+    const char *p = strstr(resp, key);
+    if (!p) return;
+    p += strlen(key);
+
+    char buf[MAX_RESP];
+    size_t i = 0;
+    while (*p && *p != '"' && i < sizeof(buf) - 2) {
+        if (*p == '\\' && *(p+1) == 'n') {
+            buf[i++] = '\n';
+            p += 2;
+        } else if (*p == '\\' && *(p+1) == '"') {
+            buf[i++] = '"';
+            p += 2;
+        } else {
+            buf[i++] = *p++;
+        }
+    }
+    buf[i] = '\0';
+    if (i > 0) {
+        fputs(buf, stdout);
+    }
+}
+
+/*
+ * Effettua la verifica con il daemon Guardian.
+ * Ritorna GUARDIAN_ALLOW, GUARDIAN_BLOCK o GUARDIAN_SANDBOX.
+ * In caso di GUARDIAN_SANDBOX, *out_exit_code contiene l'exit code del container.
+ * resp_buf (se non NULL) riceve la risposta JSON grezza per ulteriore parsing.
+ */
+static int guardian_check(const char *socket_path, const char *command, int *out_exit_code,
+                           char *resp_buf, size_t resp_buf_size)
+{
+    *out_exit_code = 0;
+
     int fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (fd < 0) {
-        return 0; /* safe failure: block */
+        return GUARDIAN_BLOCK; /* safe failure: block */
     }
 
     struct sockaddr_un addr;
@@ -51,7 +139,7 @@ static int guardian_check(const char *socket_path, const char *command)
 
     if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
         close(fd);
-        return 0; /* safe failure: block */
+        return GUARDIAN_BLOCK; /* safe failure: block */
     }
 
     /* escape base: sostituisce " con ' nel comando per non rompere il JSON */
@@ -69,30 +157,56 @@ static int guardian_check(const char *socket_path, const char *command)
     }
     escaped[j] = '\0';
 
+    /* ottieni la directory di lavoro corrente */
+    char workdir[4096];
+    if (getcwd(workdir, sizeof(workdir)) == NULL) {
+        workdir[0] = '\0';
+    }
+
     /* invia richiesta JSON */
-    char req[MAX_CMD + 128];
+    char req[MAX_CMD + 4096 + 64];
     snprintf(req, sizeof(req),
-        "{\"command\":\"%s\",\"work_dir\":\"\",\"agent_name\":\"shim\"}\n",
-        escaped);
+        "{\"command\":\"%s\",\"work_dir\":\"%s\",\"agent_name\":\"shim\"}\n",
+        escaped, workdir);
 
     if (write(fd, req, strlen(req)) < 0) {
         close(fd);
-        return 0;
+        return GUARDIAN_BLOCK;
     }
     shutdown(fd, SHUT_WR);
 
-    /* leggi risposta */
+    /* leggi risposta (potenzialmente lunga per output sandbox) */
     char resp[MAX_RESP];
-    ssize_t n = read(fd, resp, sizeof(resp) - 1);
+    ssize_t total = 0;
+    ssize_t n;
+    while (total < (ssize_t)(sizeof(resp) - 1)) {
+        n = read(fd, resp + total, sizeof(resp) - 1 - (size_t)total);
+        if (n <= 0) break;
+        total += n;
+    }
     close(fd);
 
-    if (n <= 0) {
-        return 0; /* safe failure */
+    if (total <= 0) {
+        return GUARDIAN_BLOCK; /* safe failure */
     }
-    resp[n] = '\0';
+    resp[total] = '\0';
 
-    /* il daemon risponde con JSON contenente "decision":"allow" o "block" */
-    return strstr(resp, "\"allow\"") != NULL;
+    /* copia risposta nel buffer esterno se fornito */
+    if (resp_buf && resp_buf_size > 0) {
+        strncpy(resp_buf, resp, resp_buf_size - 1);
+        resp_buf[resp_buf_size - 1] = '\0';
+    }
+
+    /* determina la decisione dalla risposta JSON */
+    if (strstr(resp, "\"sandbox\"")) {
+        *out_exit_code = parse_exit_code(resp);
+        print_sandbox_output(resp);
+        return GUARDIAN_SANDBOX;
+    }
+    if (strstr(resp, "\"allow\"")) {
+        return GUARDIAN_ALLOW;
+    }
+    return GUARDIAN_BLOCK;
 }
 
 /*
@@ -153,11 +267,35 @@ int main(int argc, char *argv[])
     const char *shim_dir    = getenv(SHIM_DIR_ENV);
 
     if (socket_path != NULL) {
-        int allowed = guardian_check(socket_path, full_cmd);
-        if (!allowed) {
-            fprintf(stderr, "\033[31m[guardian] bloccato: %s\033[0m\n", full_cmd);
+        int sandbox_exit_code = 0;
+        char raw_resp[MAX_RESP];
+        raw_resp[0] = '\0';
+        int result = guardian_check(socket_path, full_cmd, &sandbox_exit_code,
+                                    raw_resp, sizeof(raw_resp));
+
+        if (result == GUARDIAN_BLOCK) {
+            char reason[512];
+            parse_reason(raw_resp, reason, sizeof(reason));
+            if (reason[0]) {
+                fprintf(stderr, "\033[31m[guardian] bloccato: %s — %s\033[0m\n", full_cmd, reason);
+            } else {
+                fprintf(stderr, "\033[31m[guardian] bloccato: %s\033[0m\n", full_cmd);
+            }
             return 1;
         }
+        if (result == GUARDIAN_SANDBOX) {
+            /* stampa header sandbox su stderr prima dell'output del container */
+            char reason[256];
+            parse_reason(raw_resp, reason, sizeof(reason));
+            if (reason[0]) {
+                fprintf(stderr, "\033[33m[⬡ sandbox]\033[0m %s — %s\n", full_cmd, reason);
+            } else {
+                fprintf(stderr, "\033[33m[⬡ sandbox]\033[0m %s\n", full_cmd);
+            }
+            /* il daemon ha già eseguito il comando in Docker — propaga exit code */
+            return sandbox_exit_code;
+        }
+        /* GUARDIAN_ALLOW: continua con execvp sotto */
     }
     /*
      * Se GUARDIAN_SOCKET non è impostato siamo fuori da 'guardian run':

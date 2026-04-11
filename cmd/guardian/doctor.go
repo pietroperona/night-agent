@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"time"
 
@@ -57,12 +58,34 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 	check("daemon in esecuzione", daemonRunning, socketPath)
 
 	fmt.Println()
+	fmt.Println("Sandbox (Ciclo 2):")
+
+	dockerInstalled := isDockerInstalled()
+	check("Docker installato", dockerInstalled, "")
+
+	dockerRunning := false
+	if dockerInstalled {
+		dockerRunning = isDockerRunning()
+	}
+	check("Docker daemon in esecuzione", dockerRunning, "")
+
+	fmt.Println()
 	if allOK {
 		fmt.Println("tutto ok — guardian è operativo")
 	} else {
 		fmt.Println("alcuni controlli falliti — esegui 'guardian init' per configurare")
 	}
 	return nil
+}
+
+func isDockerInstalled() bool {
+	_, err := exec.LookPath("docker")
+	return err == nil
+}
+
+func isDockerRunning() bool {
+	cmd := exec.Command("docker", "info")
+	return cmd.Run() == nil
 }
 
 func isDaemonRunning(socketPath string) bool {
