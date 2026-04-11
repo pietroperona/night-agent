@@ -1,8 +1,8 @@
-# AI Guardian
+# Night Agent
 
 **Runtime security layer per agenti AI su macOS.**
 
-AI Guardian si mette tra te e gli agenti AI (Claude Code, Codex, ecc.) e intercetta ogni comando prima che venga eseguito. Decide se lasciarlo passare, bloccarlo, o eseguirlo in un container Docker isolato — secondo regole YAML che definisci tu.
+Night Agent si mette tra te e gli agenti AI (Claude Code, Codex, ecc.) e intercetta ogni comando prima che venga eseguito. Decide se lasciarlo passare, bloccarlo, o eseguirlo in un container Docker isolato — secondo regole YAML che definisci tu.
 
 ---
 
@@ -42,8 +42,8 @@ xcode-select --install
 ### Build
 
 ```bash
-git clone https://github.com/pietroperona/agent-guardian
-cd agent-guardian
+git clone https://github.com/pietroperona/night-agent
+cd night-agent
 make all
 ```
 
@@ -55,7 +55,7 @@ Produce tre binari nella root del progetto:
 ### Setup
 
 ```bash
-./guardian init
+./night-agent init
 ```
 
 Il wizard guida nella configurazione delle regole di policy. Al termine:
@@ -70,16 +70,16 @@ Il wizard guida nella configurazione delle regole di policy. Al termine:
 ### Avvia un agente sotto protezione
 
 ```bash
-./guardian run claude
-./guardian run python3 my_agent.py
-./guardian run node agent.js
+./night-agent run claude
+./night-agent run python3 my_agent.py
+./night-agent run node agent.js
 ```
 
 ### Esegui un comando esplicitamente in sandbox
 
 ```bash
-guardian sandbox run "python3 migration.py"
-guardian sandbox run --image alpine:3.20 --network bridge "bash deploy.sh"
+night-agent sandbox run "python3 migration.py"
+night-agent sandbox run --image alpine:3.20 --network bridge "bash deploy.sh"
 ```
 
 Output:
@@ -94,7 +94,7 @@ Hello, World!
 ### Verifica che tutto funzioni
 
 ```bash
-./guardian doctor
+./night-agent doctor
 ```
 
 Output:
@@ -116,10 +116,10 @@ tutto ok — guardian è operativo
 ### Vedi cosa sta succedendo
 
 ```bash
-./guardian logs
-./guardian logs --limit 20
-./guardian logs --decision block
-./guardian logs --decision sandbox
+./night-agent logs
+./night-agent logs --limit 20
+./night-agent logs --decision block
+./night-agent logs --decision sandbox
 ```
 
 ---
@@ -128,16 +128,16 @@ tutto ok — guardian è operativo
 
 ```bash
 # Mostra tutte le regole
-guardian policy list
+night-agent policy list
 
 # Attiva/disattiva una regola
-guardian policy toggle block_sudo
+night-agent policy toggle block_sudo
 
 # Aggiungi una regola custom
-guardian policy add
+night-agent policy add
 
 # Rimuovi una regola
-guardian policy remove block_sudo
+night-agent policy remove block_sudo
 ```
 
 ### Esempio policy.yaml
@@ -211,29 +211,29 @@ Il workspace corrente viene montato automaticamente come `/workspace` nel contai
 ## Comandi disponibili
 
 ```
-guardian init                     Installa Guardian, esegui il wizard di policy
-guardian init --yes               Installa con tutti i default senza wizard
-guardian start                    Avvia il daemon in foreground
-guardian run <agente> [args...]   Avvia un agente AI sotto protezione
-guardian sandbox run <cmd>        Esegui un comando esplicitamente in sandbox Docker
-guardian sandbox run --image <i>  Specifica l'immagine Docker da usare
-guardian sandbox run --network <n> Specifica la modalità rete (none/bridge)
-guardian policy list              Mostra tutte le regole
-guardian policy toggle <id>       Attiva/disattiva una regola
-guardian policy add               Aggiungi una regola interattivamente
-guardian policy remove <id>       Rimuovi una regola
-guardian logs                     Mostra l'audit trail
-guardian logs --decision sandbox  Mostra solo eventi sandbox
-guardian doctor                   Diagnostica installazione (include check Docker)
-guardian uninstall                Rimuovi Guardian dal sistema
-guardian help                     Mostra questo help
+night-agent init                     Installa Guardian, esegui il wizard di policy
+night-agent init --yes               Installa con tutti i default senza wizard
+night-agent start                    Avvia il daemon in foreground
+night-agent run <agente> [args...]   Avvia un agente AI sotto protezione
+night-agent sandbox run <cmd>        Esegui un comando esplicitamente in sandbox Docker
+night-agent sandbox run --image <i>  Specifica l'immagine Docker da usare
+night-agent sandbox run --network <n> Specifica la modalità rete (none/bridge)
+night-agent policy list              Mostra tutte le regole
+night-agent policy toggle <id>       Attiva/disattiva una regola
+night-agent policy add               Aggiungi una regola interattivamente
+night-agent policy remove <id>       Rimuovi una regola
+night-agent logs                     Mostra l'audit trail
+night-agent logs --decision sandbox  Mostra solo eventi sandbox
+night-agent doctor                   Diagnostica installazione (include check Docker)
+night-agent uninstall                Rimuovi Guardian dal sistema
+night-agent help                     Mostra questo help
 ```
 
 ---
 
 ## Limitazioni note
 
-- **Claude Code** (e altri agenti con Hardened Runtime) non sono intercettabili via `DYLD_INSERT_LIBRARIES`. AI Guardian usa PATH shims come approccio principale, che funziona con qualsiasi agente.
+- **Claude Code** (e altri agenti con Hardened Runtime) non sono intercettabili via `DYLD_INSERT_LIBRARIES`. Night Agent usa PATH shims come approccio principale, che funziona con qualsiasi agente.
 - Intercetta comandi eseguiti via shell. Chiamate syscall dirette o chiamate native non passano per il layer di interception.
 - La sandbox richiede Docker Desktop installato e in esecuzione. Se Docker non è disponibile, le regole `sandbox` fanno fail-safe su `block`.
 - Richiede macOS. Linux e Windows non sono supportati.

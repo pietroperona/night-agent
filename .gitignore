@@ -3,6 +3,7 @@
 
 # Build output
 /guardian
+/night-agent
 /dist/
 
 # Go

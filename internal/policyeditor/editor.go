@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pietroperona/agent-guardian/internal/policy"
+	"github.com/pietroperona/night-agent/internal/policy"
 )
 
 // NewRuleSpec contiene i dati per creare una nuova regola.

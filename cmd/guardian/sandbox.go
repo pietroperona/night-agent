@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/pietroperona/agent-guardian/internal/sandbox"
+	"github.com/pietroperona/night-agent/internal/sandbox"
 	"github.com/spf13/cobra"
 )
 

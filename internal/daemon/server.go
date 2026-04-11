@@ -9,10 +9,10 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/pietroperona/agent-guardian/internal/audit"
-	"github.com/pietroperona/agent-guardian/internal/interception"
-	"github.com/pietroperona/agent-guardian/internal/policy"
-	"github.com/pietroperona/agent-guardian/internal/sandbox"
+	"github.com/pietroperona/night-agent/internal/audit"
+	"github.com/pietroperona/night-agent/internal/interception"
+	"github.com/pietroperona/night-agent/internal/policy"
+	"github.com/pietroperona/night-agent/internal/sandbox"
 )
 
 // Request è il messaggio inviato dalla shell hook al daemon.

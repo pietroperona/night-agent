@@ -1,4 +1,4 @@
-module github.com/pietroperona/agent-guardian
+module github.com/pietroperona/night-agent
 
 go 1.26.1
 

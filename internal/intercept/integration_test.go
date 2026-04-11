@@ -12,10 +12,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pietroperona/agent-guardian/internal/audit"
-	"github.com/pietroperona/agent-guardian/internal/daemon"
-	"github.com/pietroperona/agent-guardian/internal/intercept"
-	"github.com/pietroperona/agent-guardian/internal/policy"
+	"github.com/pietroperona/night-agent/internal/audit"
+	"github.com/pietroperona/night-agent/internal/daemon"
+	"github.com/pietroperona/night-agent/internal/intercept"
+	"github.com/pietroperona/night-agent/internal/policy"
 )
 
 // TestDYLD_BlocksCommandViaLibrary è un integration test end-to-end.

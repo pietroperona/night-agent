@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/pietroperona/agent-guardian/internal/launchagent"
-	"github.com/pietroperona/agent-guardian/internal/shell"
+	"github.com/pietroperona/night-agent/internal/launchagent"
+	"github.com/pietroperona/night-agent/internal/shell"
 	"github.com/spf13/cobra"
 )
 

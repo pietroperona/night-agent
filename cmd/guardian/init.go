@@ -6,11 +6,11 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/pietroperona/agent-guardian/internal/launchagent"
-	"github.com/pietroperona/agent-guardian/internal/policy"
-	"github.com/pietroperona/agent-guardian/internal/shell"
-	"github.com/pietroperona/agent-guardian/internal/shim"
-	"github.com/pietroperona/agent-guardian/internal/wizard"
+	"github.com/pietroperona/night-agent/internal/launchagent"
+	"github.com/pietroperona/night-agent/internal/policy"
+	"github.com/pietroperona/night-agent/internal/shell"
+	"github.com/pietroperona/night-agent/internal/shim"
+	"github.com/pietroperona/night-agent/internal/wizard"
 	"github.com/spf13/cobra"
 )
 

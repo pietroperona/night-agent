@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pietroperona/agent-guardian/internal/audit"
-	"github.com/pietroperona/agent-guardian/internal/policy"
+	"github.com/pietroperona/night-agent/internal/audit"
+	"github.com/pietroperona/night-agent/internal/policy"
 )
 
 func TestLogger_WriteAndRead(t *testing.T) {

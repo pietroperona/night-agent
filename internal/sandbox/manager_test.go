@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pietroperona/agent-guardian/internal/sandbox"
+	"github.com/pietroperona/night-agent/internal/sandbox"
 )
 
 // dockerAvailable verifica se Docker è installato e il daemon è in esecuzione.

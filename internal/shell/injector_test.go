@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pietroperona/agent-guardian/internal/shell"
+	"github.com/pietroperona/night-agent/internal/shell"
 )
 
 const testSocketPath = "/tmp/guardian-test.sock"

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pietroperona/agent-guardian/internal/launchagent"
+	"github.com/pietroperona/night-agent/internal/launchagent"
 )
 
 func TestPlistPath(t *testing.T) {

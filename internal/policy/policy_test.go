@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pietroperona/agent-guardian/internal/policy"
+	"github.com/pietroperona/night-agent/internal/policy"
 )
 
 func TestLoadPolicy_ValidFile(t *testing.T) {

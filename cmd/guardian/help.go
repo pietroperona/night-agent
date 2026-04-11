@@ -86,6 +86,6 @@ func runHelp(cmd *cobra.Command, args []string) {
 	fmt.Fprintln(w)
 
 	fmt.Fprintln(w, ansiDim+"  ─────────────────────────────────────────────────────────"+ansiReset)
-	fmt.Fprintf(w, "  %sDocumentazione:%s github.com/pietroperona/agent-guardian\n\n",
+	fmt.Fprintf(w, "  %sDocumentazione:%s github.com/pietroperona/night-agent\n\n",
 		ansiDim, ansiReset)
 }

@@ -3,7 +3,7 @@ package prompt_test
 import (
 	"testing"
 
-	"github.com/pietroperona/agent-guardian/internal/prompt"
+	"github.com/pietroperona/night-agent/internal/prompt"
 )
 
 // --- PromptResponse ---

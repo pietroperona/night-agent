@@ -1,6 +1,6 @@
 DYLIB      = guardian-intercept.dylib
 DYLIB_SRC  = internal/intercept/csrc/guardian_intercept.c
-BINARY     = guardian
+BINARY     = night-agent
 HELPER_SRC = internal/intercept/testdata/exec-helper/main.c
 HELPER     = internal/intercept/testdata/exec-helper/exec-helper
 SHIM       = guardian-shim

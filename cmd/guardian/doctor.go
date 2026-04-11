@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/pietroperona/agent-guardian/internal/shell"
+	"github.com/pietroperona/night-agent/internal/shell"
 	"github.com/spf13/cobra"
 )
 

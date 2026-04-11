@@ -6,8 +6,8 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/pietroperona/agent-guardian/internal/intercept"
-	"github.com/pietroperona/agent-guardian/internal/shim"
+	"github.com/pietroperona/night-agent/internal/intercept"
+	"github.com/pietroperona/night-agent/internal/shim"
 	"github.com/spf13/cobra"
 )
 

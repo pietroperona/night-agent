@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pietroperona/agent-guardian/internal/sandbox"
+	"github.com/pietroperona/night-agent/internal/sandbox"
 )
 
 // --- TestLoadProfile ---

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pietroperona/agent-guardian/internal/policy"
+	"github.com/pietroperona/night-agent/internal/policy"
 )
 
 // NormalizedAction è il risultato della normalizzazione di un comando raw.

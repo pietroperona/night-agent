@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**AI Guardian** è un CLI tool per macOS che funge da runtime security layer per agenti AI (Claude Code, Codex, ecc.). Intercetta e governa le azioni degli agenti prima che vengano eseguite.
+**Night Agent** è un CLI tool per macOS che funge da runtime security layer per agenti AI (Claude Code, Codex, ecc.). Intercetta e governa le azioni degli agenti prima che vengano eseguite.
 
-Documento di specifica completo: [docs/ai-agent-guardian-mvp-plan.md](docs/ai-agent-guardian-mvp-plan.md)
+Documento di specifica completo: [docs/ai-night-agent-mvp-plan.md](docs/ai-night-agent-mvp-plan.md)
 
 **Stato attuale: Cycle 1 ✅ + Cycle 2 ✅ — in sviluppo su `feature/sandbox-cycle2`**
 
@@ -115,7 +115,7 @@ Fail-safe: se Docker non è disponibile → blocca con messaggio esplicito.
 
 ## Repository & Git Workflow
 
-- **Remote**: [github.com/pietroperona/agent-guardian](https://github.com/pietroperona/agent-guardian)
+- **Remote**: [github.com/pietroperona/night-agent](https://github.com/pietroperona/night-agent)
 - **Branch principali**: `main` (produzione), `develop`, `feature/sandbox-cycle2` (corrente)
 - **Commit**: non citare mai il nome di strumenti AI nei messaggi di commit
 

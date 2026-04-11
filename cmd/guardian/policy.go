@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pietroperona/agent-guardian/internal/policy"
-	"github.com/pietroperona/agent-guardian/internal/policyeditor"
+	"github.com/pietroperona/night-agent/internal/policy"
+	"github.com/pietroperona/night-agent/internal/policyeditor"
 	"github.com/spf13/cobra"
 )
 
