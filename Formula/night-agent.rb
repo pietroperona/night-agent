@@ -11,7 +11,7 @@ class NightAgent < Formula
 
   def install
     # Compila il binario principale Go
-    system "go", "build", "-o", bin/"night-agent", "./cmd/guardian"
+    system "go", "build", "-o", bin/"nightagent", "./cmd/guardian"
 
     # Compila lo shim C (intercettazione comandi via PATH)
     system "clang", "-o", libexec/"guardian-shim",
@@ -51,7 +51,7 @@ class NightAgent < Formula
       Night Agent è stato installato. Per completare la configurazione:
 
       1. Inizializza Night Agent:
-           night-agent init
+           nightagent init
 
       2. Per le funzionalità sandbox, installa Docker Desktop:
            https://www.docker.com/products/docker-desktop/
@@ -61,14 +61,14 @@ class NightAgent < Formula
            source ~/.zshrc
 
       Per verificare che tutto funzioni:
-           night-agent doctor
+           nightagent doctor
     EOS
   end
 
   test do
     # Test che il binario risponde correttamente
-    output = shell_output("#{bin}/night-agent --help")
-    assert_match "night-agent", output
+    output = shell_output("#{bin}/nightagent --help")
+    assert_match "nightagent", output
 
     # Test che la policy di default è accessibile
     assert_predicate pkgshare / "configs" / "default_policy.yaml", :exist?

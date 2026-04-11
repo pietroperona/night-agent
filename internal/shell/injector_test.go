@@ -9,7 +9,7 @@ import (
 	"github.com/pietroperona/night-agent/internal/shell"
 )
 
-const testSocketPath = "/tmp/guardian-test.sock"
+const testSocketPath = "/tmp/nightagent-test.sock"
 
 func TestInject_AddsHookToZshrc(t *testing.T) {
 	zshrc := writeTempRC(t, "# existing config\nexport PATH=$PATH:/usr/local/bin\n")
@@ -23,8 +23,8 @@ func TestInject_AddsHookToZshrc(t *testing.T) {
 	}
 
 	content, _ := os.ReadFile(zshrc)
-	if !strings.Contains(string(content), "guardian") {
-		t.Error("atteso hook guardian nel file")
+	if !strings.Contains(string(content), "nightagent") {
+		t.Error("atteso hook nightagent nel file")
 	}
 	if !strings.Contains(string(content), "preexec") {
 		t.Error("atteso uso di preexec nell'hook")
@@ -50,9 +50,9 @@ func TestInject_Idempotent(t *testing.T) {
 	}
 
 	content, _ := os.ReadFile(zshrc)
-	count := strings.Count(string(content), "# BEGIN guardian")
+	count := strings.Count(string(content), "# BEGIN nightagent")
 	if count != 1 {
-		t.Errorf("atteso 1 blocco guardian, trovati %d", count)
+		t.Errorf("atteso 1 blocco nightagent, trovati %d", count)
 	}
 }
 
@@ -72,8 +72,8 @@ func TestRemove_RemovesHookFromZshrc(t *testing.T) {
 	}
 
 	content, _ := os.ReadFile(zshrc)
-	if strings.Contains(string(content), "guardian") {
-		t.Error("guardian non dovrebbe essere presente dopo la rimozione")
+	if strings.Contains(string(content), "nightagent") {
+		t.Error("nightagent non dovrebbe essere presente dopo la rimozione")
 	}
 	if !strings.Contains(string(content), "existing config") {
 		t.Error("il contenuto originale deve essere preservato dopo la rimozione")

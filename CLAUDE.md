@@ -57,17 +57,17 @@ Agente AI
 ## CLI Commands Implementati
 
 ```bash
-guardian init [--yes]         # Setup + wizard policy
-guardian start                # Avvia daemon (Unix socket)
-guardian run <agente>         # Avvia agente con interception attiva
-guardian sandbox run <cmd>    # Esegui comando in Docker sandbox (Cycle 2)
-  --image <img>               # Immagine Docker (default: alpine:3.20)
-  --network <net>             # Rete: none (default) o bridge
-guardian logs [--decision] [--type] [--limit] [--json]
-guardian policy list|toggle|add|remove
-guardian doctor               # Check installazione + Docker status
-guardian uninstall
-guardian help
+nightagent init [--yes]         # Setup + wizard policy
+nightagent start                # Avvia daemon (Unix socket)
+nightagent run <agente>         # Avvia agente con interception attiva
+nightagent sandbox run <cmd>    # Esegui comando in Docker sandbox (Cycle 2)
+  --image <img>                 # Immagine Docker (default: alpine:3.20)
+  --network <net>               # Rete: none (default) o bridge
+nightagent logs [--decision] [--type] [--limit] [--json]
+nightagent policy list|toggle|add|remove
+nightagent doctor               # Check installazione + Docker status
+nightagent uninstall
+nightagent help
 ```
 
 ## Policy Model
@@ -110,7 +110,7 @@ Fail-safe: se Docker non è disponibile → blocca con messaggio esplicito.
 ## Roadmap
 
 - **Cycle 1** ✅ — Policy engine, PATH shims, DYLD, shell hook, audit log, LaunchAgent
-- **Cycle 2** ✅ — Docker sandbox, `guardian sandbox run`, routing automatico, path rewriting
+- **Cycle 2** ✅ — Docker sandbox, `nightagent sandbox run`, routing automatico, path rewriting
 - **Cycle 3** — Risk scoring, anomaly detection, policy suggestions
 
 ## Repository & Git Workflow
@@ -131,7 +131,7 @@ Tutto lo sviluppo segue **Test-Driven Development**:
 go test ./...                        # tutti i test
 go test ./internal/sandbox/...       # solo sandbox
 go test -run TestNomeFunzione ./...  # singolo test
-make                                 # build completo (dylib + shim + guardian)
+make                                 # build completo (dylib + shim + nightagent)
 ```
 
 ## Principi di Design Fondamentali

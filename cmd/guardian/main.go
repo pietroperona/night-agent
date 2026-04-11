@@ -8,7 +8,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "night-agent",
+	Use:   "nightagent",
 	Short: "Night Agent — runtime security layer for AI agents",
 }
 
