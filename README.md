@@ -28,7 +28,24 @@ Il daemon gira in background, avviato automaticamente al login tramite LaunchAge
 
 ## Installazione
 
-### Prerequisiti
+### Via Homebrew (consigliato)
+
+```bash
+brew tap pietroperona/night-agent
+brew install night-agent
+```
+
+Poi inizializza:
+
+```bash
+night-agent init
+```
+
+Per le funzionalità sandbox installa [Docker Desktop](https://www.docker.com/products/docker-desktop/) e avvialo almeno una volta.
+
+### Build da sorgente
+
+#### Prerequisiti
 
 - macOS (arm64 o x86_64)
 - Go 1.21+
@@ -39,7 +56,7 @@ Il daemon gira in background, avviato automaticamente al login tramite LaunchAge
 xcode-select --install
 ```
 
-### Build
+#### Build
 
 ```bash
 git clone https://github.com/pietroperona/night-agent
@@ -48,11 +65,12 @@ make all
 ```
 
 Produce tre binari nella root del progetto:
-- `guardian` — CLI principale
+
+- `night-agent` — CLI principale
 - `guardian-shim` — binario C per l'interception PATH
 - `guardian-intercept.dylib` — libreria per DYLD injection (agenti senza Hardened Runtime)
 
-### Setup
+#### Setup
 
 ```bash
 ./night-agent init
