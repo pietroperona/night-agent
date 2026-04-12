@@ -50,7 +50,7 @@ Per le funzionalità sandbox installa [Docker Desktop](https://www.docker.com/pr
 - macOS (arm64 o x86_64)
 - Go 1.21+
 - Clang (incluso in Xcode Command Line Tools)
-- Docker Desktop (per la sandbox — Ciclo 2)
+- Docker Desktop (per la sandbox)
 
 ```bash
 xcode-select --install
@@ -102,7 +102,7 @@ night-agent sandbox run --image alpine:3.20 --network bridge "bash deploy.sh"
 
 Output:
 
-```
+```text
 [⬡ sandbox] python3 migration.py — script Python eseguito in ambiente isolato
 Hello, World!
 
@@ -117,14 +117,14 @@ Hello, World!
 
 Output:
 
-```
+```text
 Guardian — diagnostica:
   ✓ directory ~/.night-agent
   ✓ policy.yaml
   ✓ hook shell (.zshrc)
   ✓ daemon in esecuzione
 
-Sandbox (Ciclo 2):
+Sandbox:
   ✓ Docker installato
   ✓ Docker daemon in esecuzione
 
@@ -174,7 +174,7 @@ nightagent logs --json | tail -3 | python3 -m json.tool
 
 ---
 
-## Risk scoring e suggerimenti (Cycle 3)
+## Risk scoring e suggerimenti
 
 Night Agent valuta ogni azione con un **risk scorer euristico** indipendente dal policy engine. Il score è un segnale aggiuntivo — non sovrascrive mai le regole hard della policy.
 
@@ -336,7 +336,7 @@ Il workspace corrente viene montato automaticamente come `/workspace` nel contai
 
 ## Comandi disponibili
 
-```
+```text
 night-agent init                     Installa Guardian, esegui il wizard di policy
 night-agent init --yes               Installa con tutti i default senza wizard
 night-agent start                    Avvia il daemon in foreground
@@ -363,14 +363,6 @@ night-agent help                     Mostra questo help
 - Intercetta comandi eseguiti via shell. Chiamate syscall dirette o chiamate native non passano per il layer di interception.
 - La sandbox richiede Docker Desktop installato e in esecuzione. Se Docker non è disponibile, le regole `sandbox` fanno fail-safe su `block`.
 - Richiede macOS. Linux e Windows non sono supportati.
-
----
-
-## Roadmap
-
-- **Cycle 1** ✅ — Policy engine rule-based, PATH shims, audit log, LaunchAgent
-- **Cycle 2** ✅ — Docker sandbox integration, isolamento rete, routing automatico via policy
-- **Cycle 3** ✅ — Risk scoring euristico, anomaly detection, suggerimenti policy contestuali
 
 ---
 
