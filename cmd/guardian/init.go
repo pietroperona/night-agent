@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/pietroperona/night-agent/internal/audit"
+	"github.com/pietroperona/night-agent/internal/claudehook"
 	"github.com/pietroperona/night-agent/internal/launchagent"
 	"github.com/pietroperona/night-agent/internal/policy"
 	"github.com/pietroperona/night-agent/internal/shell"
@@ -85,6 +86,21 @@ func runInit(cmd *cobra.Command, args []string) error {
 		fmt.Printf("avviso: LaunchAgent non installato (%v)\n", err)
 	} else {
 		fmt.Printf("LaunchAgent installato: avvio automatico al login attivo\n")
+	}
+
+	// configura hook Claude Code (solo se Claude Code è installato)
+	if claudehook.IsClaudeInstalled() {
+		settingsPath, err := claudehook.SettingsPath()
+		if err == nil {
+			binaryPath, err := resolveAbsBinary()
+			if err == nil {
+				if err := claudehook.Install(settingsPath, binaryPath); err != nil {
+					fmt.Printf("avviso: hook Claude Code non configurato (%v)\n", err)
+				} else if claudehook.IsConfigured(settingsPath) {
+					fmt.Printf("hook Claude Code: %s\n", settingsPath)
+				}
+			}
+		}
 	}
 
 	// genera la chiave di firma (idempotente — non sovrascrive se esiste già)

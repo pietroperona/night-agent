@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/pietroperona/night-agent/internal/claudehook"
 	"github.com/pietroperona/night-agent/internal/launchagent"
 	"github.com/pietroperona/night-agent/internal/shell"
 	"github.com/spf13/cobra"
@@ -43,6 +44,17 @@ func runUninstall(cmd *cobra.Command, args []string) error {
 			fmt.Printf("avviso: errore rimozione hook da %s: %v\n", rcPath, err)
 		} else {
 			fmt.Printf("hook rimosso da: %s\n", rcPath)
+		}
+	}
+
+	// rimuovi hook Claude Code se presente
+	if settingsPath, err := claudehook.SettingsPath(); err == nil {
+		if claudehook.IsConfigured(settingsPath) {
+			if err := claudehook.Remove(settingsPath); err != nil {
+				fmt.Printf("avviso: errore rimozione hook Claude Code: %v\n", err)
+			} else {
+				fmt.Printf("hook Claude Code rimosso da: %s\n", settingsPath)
+			}
 		}
 	}
 
