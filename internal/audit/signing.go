@@ -1,0 +1,120 @@
+package audit
+
+import (
+	"crypto/hmac"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"os"
+)
+
+// Signer gestisce la chiave HMAC-SHA256 per firmare e verificare eventi.
+// La chiave è un segreto locale a 32 byte conservato in ~/.night-agent/signing.key.
+// Con la futura cloud dashboard la chiave pubblica potrà essere caricata per
+// verifica server-side (upgrade a Ed25519 pianificato).
+type Signer struct {
+	key []byte
+}
+
+// GenerateKey crea una nuova chiave casuale a 32 byte nel file keyPath.
+// Se il file esiste già non fa nulla (idempotente).
+func GenerateKey(keyPath string) error {
+	if _, err := os.Stat(keyPath); err == nil {
+		return nil // già presente
+	}
+
+	key := make([]byte, 32)
+	if _, err := rand.Read(key); err != nil {
+		return fmt.Errorf("generazione chiave: %w", err)
+	}
+
+	encoded := hex.EncodeToString(key)
+	return os.WriteFile(keyPath, []byte(encoded), 0600)
+}
+
+// NewSigner carica la chiave da keyPath e restituisce un Signer pronto.
+func NewSigner(keyPath string) (*Signer, error) {
+	data, err := os.ReadFile(keyPath)
+	if err != nil {
+		return nil, fmt.Errorf("lettura chiave: %w", err)
+	}
+
+	key, err := hex.DecodeString(string(data))
+	if err != nil {
+		return nil, fmt.Errorf("chiave non valida: %w", err)
+	}
+	if len(key) != 32 {
+		return nil, fmt.Errorf("chiave deve essere 32 byte, trovati %d", len(key))
+	}
+
+	return &Signer{key: key}, nil
+}
+
+// Sign aggiunge la firma HMAC-SHA256 all'evento e lo restituisce.
+// La firma copre la serializzazione JSON dell'evento con Sig="".
+func (s *Signer) Sign(e Event) (Event, error) {
+	e.Sig = "" // azzera prima di firmare
+	payload, err := json.Marshal(e)
+	if err != nil {
+		return e, fmt.Errorf("serializzazione evento: %w", err)
+	}
+	e.Sig = s.computeHMAC(payload)
+	return e, nil
+}
+
+// Verify controlla che la firma dell'evento sia valida.
+func (s *Signer) Verify(e Event) error {
+	if e.Sig == "" {
+		return fmt.Errorf("evento senza firma (sig assente)")
+	}
+	if len(s.key) == 0 {
+		return fmt.Errorf("signer senza chiave")
+	}
+
+	sig := e.Sig
+	e.Sig = ""
+	payload, err := json.Marshal(e)
+	if err != nil {
+		return fmt.Errorf("serializzazione evento: %w", err)
+	}
+
+	expected := s.computeHMAC(payload)
+	if !hmac.Equal([]byte(sig), []byte(expected)) {
+		return fmt.Errorf("firma non valida — evento potenzialmente manomesso")
+	}
+	return nil
+}
+
+func (s *Signer) computeHMAC(data []byte) string {
+	mac := hmac.New(sha256.New, s.key)
+	mac.Write(data)
+	return hex.EncodeToString(mac.Sum(nil))
+}
+
+// VerifyResult è il risultato della verifica di un singolo evento.
+type VerifyResult struct {
+	EventID string
+	Index   int
+	Err     error
+}
+
+// VerifyAll legge tutti gli eventi da logPath e ne verifica le firme.
+// Restituisce un risultato per ogni evento (Err nil = firma valida).
+func VerifyAll(logPath string, signer *Signer) ([]VerifyResult, error) {
+	events, err := ReadAll(logPath)
+	if err != nil {
+		return nil, err
+	}
+
+	results := make([]VerifyResult, len(events))
+	for i, e := range events {
+		results[i] = VerifyResult{
+			EventID: e.ID,
+			Index:   i,
+			Err:     signer.Verify(e),
+		}
+	}
+	return results, nil
+}

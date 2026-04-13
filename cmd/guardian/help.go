@@ -88,6 +88,12 @@ func runHelp(cmd *cobra.Command, args []string) {
 	sub("night-agent logs --json", "Output raw JSONL")
 	fmt.Fprintln(w)
 
+	// Sicurezza
+	section("Sicurezza")
+	command("night-agent verify", "Verifica integrità firme nell'audit log")
+	command("night-agent mcp-hook --tool <name>", "Hook PreToolUse per Claude Code (MCP)")
+	fmt.Fprintln(w)
+
 	// Diagnostica
 	section("Diagnostica")
 	command("night-agent doctor", "Verifica che tutto sia configurato correttamente")

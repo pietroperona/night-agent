@@ -1,0 +1,92 @@
+package mcphook_test
+
+import (
+	"testing"
+
+	"github.com/pietroperona/night-agent/internal/mcphook"
+)
+
+func TestParseInput_BashCommand(t *testing.T) {
+	input := `{"command":"sudo rm -rf /tmp","workdir":"/home/user"}`
+	parsed, err := mcphook.ParseInput("Bash", input)
+	if err != nil {
+		t.Fatalf("ParseInput: %v", err)
+	}
+	if parsed.Command != "sudo rm -rf /tmp" {
+		t.Errorf("command: got %q", parsed.Command)
+	}
+	if parsed.WorkDir != "/home/user" {
+		t.Errorf("workdir: got %q", parsed.WorkDir)
+	}
+}
+
+func TestParseInput_EditFile(t *testing.T) {
+	input := `{"file_path":"/etc/passwd","old_string":"foo","new_string":"bar"}`
+	parsed, err := mcphook.ParseInput("Edit", input)
+	if err != nil {
+		t.Fatalf("ParseInput: %v", err)
+	}
+	if parsed.Path != "/etc/passwd" {
+		t.Errorf("path: got %q", parsed.Path)
+	}
+	if parsed.Command == "" {
+		t.Error("command non costruito per Edit")
+	}
+}
+
+func TestParseInput_WriteFile(t *testing.T) {
+	input := `{"file_path":"/home/user/.ssh/authorized_keys","content":"..."}`
+	parsed, err := mcphook.ParseInput("Write", input)
+	if err != nil {
+		t.Fatalf("ParseInput: %v", err)
+	}
+	if parsed.Path != "/home/user/.ssh/authorized_keys" {
+		t.Errorf("path: got %q", parsed.Path)
+	}
+}
+
+func TestParseInput_UnknownTool(t *testing.T) {
+	input := `{"anything":"value"}`
+	parsed, err := mcphook.ParseInput("UnknownTool", input)
+	if err != nil {
+		t.Fatalf("ParseInput su tool sconosciuto non deve fallire: %v", err)
+	}
+	if parsed.ToolName != "UnknownTool" {
+		t.Errorf("tool_name: got %q", parsed.ToolName)
+	}
+}
+
+func TestBuildDaemonRequest(t *testing.T) {
+	parsed := mcphook.ParsedCall{
+		ToolName:  "Bash",
+		Command:   "git push origin main",
+		WorkDir:   "/home/user/project",
+		AgentName: "claude-code",
+	}
+	req := mcphook.BuildDaemonRequest(parsed)
+	if req.Command != "git push origin main" {
+		t.Errorf("command: got %q", req.Command)
+	}
+	if req.AgentName != "claude-code" {
+		t.Errorf("agent_name: got %q", req.AgentName)
+	}
+}
+
+func TestExitCode_AllowIsZero(t *testing.T) {
+	if mcphook.ExitCode("allow") != 0 {
+		t.Error("allow deve restituire exit code 0")
+	}
+}
+
+func TestExitCode_BlockIsNonZero(t *testing.T) {
+	if mcphook.ExitCode("block") == 0 {
+		t.Error("block deve restituire exit code non zero")
+	}
+}
+
+func TestExitCode_SandboxIsZero(t *testing.T) {
+	// sandbox = eseguito in isolamento, Claude Code può continuare
+	if mcphook.ExitCode("sandbox") != 0 {
+		t.Error("sandbox deve restituire exit code 0")
+	}
+}

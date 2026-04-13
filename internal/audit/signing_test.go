@@ -1,0 +1,166 @@
+package audit_test
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/pietroperona/night-agent/internal/audit"
+)
+
+func TestGenerateKey_CreatesFile(t *testing.T) {
+	dir := t.TempDir()
+	keyPath := filepath.Join(dir, "signing.key")
+
+	if err := audit.GenerateKey(keyPath); err != nil {
+		t.Fatalf("GenerateKey: %v", err)
+	}
+
+	info, err := os.Stat(keyPath)
+	if err != nil {
+		t.Fatalf("key file non creato: %v", err)
+	}
+	if info.Mode().Perm() != 0600 {
+		t.Errorf("permessi attesi 0600, got %o", info.Mode().Perm())
+	}
+}
+
+func TestGenerateKey_Idempotent(t *testing.T) {
+	dir := t.TempDir()
+	keyPath := filepath.Join(dir, "signing.key")
+
+	if err := audit.GenerateKey(keyPath); err != nil {
+		t.Fatal(err)
+	}
+	data1, _ := os.ReadFile(keyPath)
+
+	// seconda chiamata non deve sovrascrivere
+	if err := audit.GenerateKey(keyPath); err != nil {
+		t.Fatal(err)
+	}
+	data2, _ := os.ReadFile(keyPath)
+
+	if string(data1) != string(data2) {
+		t.Error("GenerateKey sovrascrive chiave esistente")
+	}
+}
+
+func TestSignAndVerify_RoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	keyPath := filepath.Join(dir, "signing.key")
+	audit.GenerateKey(keyPath)
+
+	signer, err := audit.NewSigner(keyPath)
+	if err != nil {
+		t.Fatalf("NewSigner: %v", err)
+	}
+
+	event := audit.Event{
+		ID:       "test-123",
+		Command:  "git push origin main",
+		Decision: "block",
+		Reason:   "test",
+	}
+
+	signed, err := signer.Sign(event)
+	if err != nil {
+		t.Fatalf("Sign: %v", err)
+	}
+	if signed.Sig == "" {
+		t.Error("firma assente dopo Sign")
+	}
+
+	if err := signer.Verify(signed); err != nil {
+		t.Errorf("Verify fallito su evento valido: %v", err)
+	}
+}
+
+func TestVerify_DetectsTampering(t *testing.T) {
+	dir := t.TempDir()
+	keyPath := filepath.Join(dir, "signing.key")
+	audit.GenerateKey(keyPath)
+
+	signer, _ := audit.NewSigner(keyPath)
+
+	event := audit.Event{
+		ID:       "test-456",
+		Command:  "go build ./...",
+		Decision: "allow",
+	}
+	signed, _ := signer.Sign(event)
+
+	// manomissione: cambia il comando dopo la firma
+	signed.Command = "sudo rm -rf /"
+
+	if err := signer.Verify(signed); err == nil {
+		t.Error("Verify dovrebbe fallire su evento manomesso")
+	}
+}
+
+func TestVerify_NoKey(t *testing.T) {
+	event := audit.Event{ID: "x", Decision: "allow"}
+	// evento senza sig → Verify restituisce errore specifico
+	signer := &audit.Signer{}
+	if err := signer.Verify(event); err == nil {
+		t.Error("Verify dovrebbe fallire su evento senza firma")
+	}
+}
+
+func TestLoggerWithSigning_WritesAndVerifies(t *testing.T) {
+	dir := t.TempDir()
+	keyPath := filepath.Join(dir, "signing.key")
+	logPath := filepath.Join(dir, "audit.jsonl")
+
+	audit.GenerateKey(keyPath)
+	signer, _ := audit.NewSigner(keyPath)
+
+	logger, err := audit.NewSignedLogger(logPath, signer)
+	if err != nil {
+		t.Fatalf("NewSignedLogger: %v", err)
+	}
+
+	events := []audit.Event{
+		{ID: "1", Command: "git status", Decision: "allow"},
+		{ID: "2", Command: "sudo su", Decision: "block"},
+	}
+	for _, e := range events {
+		if err := logger.Write(e); err != nil {
+			t.Fatalf("Write: %v", err)
+		}
+	}
+	logger.Close()
+
+	// leggi e verifica tutti
+	results, err := audit.VerifyAll(logPath, signer)
+	if err != nil {
+		t.Fatalf("VerifyAll: %v", err)
+	}
+	for _, r := range results {
+		if r.Err != nil {
+			t.Errorf("evento %s: verifica fallita: %v", r.EventID, r.Err)
+		}
+	}
+}
+
+func TestVerifyAll_DetectsTamperedLine(t *testing.T) {
+	dir := t.TempDir()
+	keyPath := filepath.Join(dir, "signing.key")
+	logPath := filepath.Join(dir, "audit.jsonl")
+
+	audit.GenerateKey(keyPath)
+	signer, _ := audit.NewSigner(keyPath)
+
+	logger, _ := audit.NewSignedLogger(logPath, signer)
+	logger.Write(audit.Event{ID: "1", Command: "ls", Decision: "allow"})
+	logger.Close()
+
+	// manometti il file JSONL direttamente
+	data, _ := os.ReadFile(logPath)
+	tampered := append(data[:len(data)-2], []byte(`,"decision":"block"}`)...)
+	os.WriteFile(logPath, append(tampered, '\n'), 0600)
+
+	results, _ := audit.VerifyAll(logPath, signer)
+	if len(results) == 0 || results[0].Err == nil {
+		t.Error("VerifyAll dovrebbe rilevare manomissione")
+	}
+}

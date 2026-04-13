@@ -334,6 +334,72 @@ Il workspace corrente viene montato automaticamente come `/workspace` nel contai
 
 ---
 
+## Signed audit trail
+
+Ogni evento viene firmato con HMAC-SHA256 usando una chiave locale generata durante `init`. Se qualcuno modifica il log (manualmente o un agente), la firma non regge.
+
+```bash
+# verifica integrità di tutto l'audit log
+nightagent verify
+```
+
+Output:
+
+```text
+audit log: 142 eventi totali
+  ✓ validi:    142
+
+integrità verificata.
+```
+
+Se rileva manomissioni:
+
+```text
+  [✗] evento abc-123 (#41): firma non valida — evento potenzialmente manomesso
+audit log: 142 eventi totali
+  ✓ validi:    141
+  ✗ manomessi: 1
+```
+
+La chiave è in `~/.night-agent/signing.key` (0600). Gli eventi firmati hanno un campo `sig` nel JSONL.
+
+---
+
+## Protezione MCP tool calls (Claude Code)
+
+I PATH shims intercettano i comandi shell. Le MCP tool calls (Bash, Edit, Write…) passano invece direttamente dentro Claude Code — ma Night Agent le intercetta tramite il sistema di hooks di Claude Code.
+
+### Configurazione
+
+Aggiungi in `~/.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [{
+      "matcher": "*",
+      "hooks": [{
+        "type": "command",
+        "command": "nightagent mcp-hook --tool $TOOL_NAME --input-file $TOOL_INPUT_FILE"
+      }]
+    }]
+  }
+}
+```
+
+Da questo momento, prima di ogni tool call Claude Code consulta Night Agent. La policy YAML si applica anche alle tool call MCP:
+
+```text
+[✗] Bash bloccato — sudo disabilitato per gli agenti AI
+[⬡] Write eseguito in sandbox — scrittura su path sensibile
+```
+
+**Tool intercettati:** `Bash`, `Edit`, `Write`, `Read`, `Glob`, `Grep`, `WebFetch`, `WebSearch` + qualsiasi tool MCP custom.
+
+**Fail-open:** se il daemon non è in ascolto, il hook consente l'esecuzione senza bloccare il workflow.
+
+---
+
 ## Comandi disponibili
 
 ```text
@@ -350,6 +416,8 @@ night-agent policy add               Aggiungi una regola interattivamente
 night-agent policy remove <id>       Rimuovi una regola
 night-agent logs                     Mostra l'audit trail
 night-agent logs --decision sandbox  Mostra solo eventi sandbox
+night-agent verify                   Verifica integrità firme nell'audit log
+night-agent mcp-hook --tool <name>   Hook PreToolUse per Claude Code
 night-agent doctor                   Diagnostica installazione (include check Docker)
 night-agent uninstall                Rimuovi Guardian dal sistema
 night-agent help                     Mostra questo help

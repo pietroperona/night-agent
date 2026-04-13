@@ -39,7 +39,14 @@ func runStart(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("errore caricamento policy: %w", err)
 	}
 
-	logger, err := audit.NewLogger(logPath)
+	// usa signed logger se la chiave esiste, altrimenti logger base
+	keyPath := filepath.Join(guardianDir, "signing.key")
+	var logger *audit.Logger
+	if signer, sigErr := audit.NewSigner(keyPath); sigErr == nil {
+		logger, err = audit.NewSignedLogger(logPath, signer)
+	} else {
+		logger, err = audit.NewLogger(logPath)
+	}
 	if err != nil {
 		return fmt.Errorf("errore apertura log: %w", err)
 	}

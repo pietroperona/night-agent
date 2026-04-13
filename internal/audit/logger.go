@@ -33,6 +33,8 @@ type Event struct {
 	RiskSignals     []string `json:"risk_signals,omitempty"`
 	AnomalyDetected bool     `json:"anomaly_detected,omitempty"`
 	Suggestions     []string `json:"suggestions,omitempty"`
+	// Firma HMAC-SHA256 (signed audit trail)
+	Sig string `json:"sig,omitempty"`
 }
 
 // Filter specifica criteri di filtro per ReadFiltered.
@@ -43,25 +45,43 @@ type Filter struct {
 
 // Logger scrive eventi in formato JSONL su file.
 type Logger struct {
-	file *os.File
-	enc  *json.Encoder
+	file   *os.File
+	enc    *json.Encoder
+	signer *Signer // nil = nessuna firma
 }
 
-// NewLogger apre (o crea) il file di log e restituisce un Logger.
+// NewLogger apre (o crea) il file di log e restituisce un Logger senza firma.
 func NewLogger(path string) (*Logger, error) {
+	return newLogger(path, nil)
+}
+
+// NewSignedLogger apre (o crea) il file di log con firma HMAC-SHA256 attiva.
+func NewSignedLogger(path string, signer *Signer) (*Logger, error) {
+	return newLogger(path, signer)
+}
+
+func newLogger(path string, signer *Signer) (*Logger, error) {
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		return nil, fmt.Errorf("impossibile aprire il file di log: %w", err)
 	}
 	enc := json.NewEncoder(f)
 	enc.SetEscapeHTML(false)
-	return &Logger{file: f, enc: enc}, nil
+	return &Logger{file: f, enc: enc, signer: signer}, nil
 }
 
 // Write scrive un evento nel log. Se l'evento non ha timestamp, lo imposta ora.
+// Se il logger ha un signer, aggiunge la firma HMAC-SHA256.
 func (l *Logger) Write(event Event) error {
 	if event.Timestamp.IsZero() {
 		event.Timestamp = time.Now().UTC()
+	}
+	if l.signer != nil {
+		signed, err := l.signer.Sign(event)
+		if err != nil {
+			return fmt.Errorf("firma evento: %w", err)
+		}
+		event = signed
 	}
 	if err := l.enc.Encode(event); err != nil {
 		return fmt.Errorf("errore scrittura evento: %w", err)

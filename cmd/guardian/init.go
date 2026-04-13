@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/pietroperona/night-agent/internal/audit"
 	"github.com/pietroperona/night-agent/internal/launchagent"
 	"github.com/pietroperona/night-agent/internal/policy"
 	"github.com/pietroperona/night-agent/internal/shell"
@@ -84,6 +85,14 @@ func runInit(cmd *cobra.Command, args []string) error {
 		fmt.Printf("avviso: LaunchAgent non installato (%v)\n", err)
 	} else {
 		fmt.Printf("LaunchAgent installato: avvio automatico al login attivo\n")
+	}
+
+	// genera la chiave di firma (idempotente — non sovrascrive se esiste già)
+	keyPath := filepath.Join(guardianDir, "signing.key")
+	if err := audit.GenerateKey(keyPath); err != nil {
+		fmt.Printf("avviso: chiave di firma non generata (%v)\n", err)
+	} else {
+		fmt.Printf("firma audit: %s\n", keyPath)
 	}
 
 	if injected {
