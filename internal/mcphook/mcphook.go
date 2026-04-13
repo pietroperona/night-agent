@@ -3,11 +3,15 @@
 // questo package normalizza la tool call MCP in una richiesta daemon standard
 // e restituisce l'exit code che Claude Code interpreta come allow/block.
 //
+// Claude Code invia il contesto del hook via stdin come JSON:
+//
+//	{"tool_name": "Bash", "tool_input": {"command": "sudo ls", "workdir": "/tmp"}}
+//
 // Integrazione Claude Code (~/.claude/settings.json):
 //
 //	{
 //	  "hooks": {
-//	    "PreToolUse": [{"matcher": "*", "hooks": [{"type": "command", "command": "nightagent mcp-hook --tool $TOOL_NAME --input-file $TOOL_INPUT_FILE"}]}]
+//	    "PreToolUse": [{"matcher": "*", "hooks": [{"type": "command", "command": "/path/to/nightagent mcp-hook"}]}]
 //	  }
 //	}
 //
@@ -17,8 +21,31 @@ package mcphook
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"strings"
 )
+
+// HookInput è il JSON inviato da Claude Code su stdin al PreToolUse hook.
+type HookInput struct {
+	ToolName  string                 `json:"tool_name"`
+	ToolInput map[string]interface{} `json:"tool_input"`
+}
+
+// ParseStdin legge il JSON inviato da Claude Code su stdin e restituisce
+// una ParsedCall normalizzata pronta per essere inviata al daemon.
+func ParseStdin(r io.Reader) (ParsedCall, error) {
+	var input HookInput
+	if err := json.NewDecoder(r).Decode(&input); err != nil {
+		return ParsedCall{}, fmt.Errorf("parsing stdin: %w", err)
+	}
+
+	raw, err := json.Marshal(input.ToolInput)
+	if err != nil {
+		raw = []byte("{}")
+	}
+
+	return ParseInput(input.ToolName, string(raw))
+}
 
 // ParsedCall è la rappresentazione normalizzata di una MCP tool call.
 type ParsedCall struct {

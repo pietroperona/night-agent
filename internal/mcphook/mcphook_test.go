@@ -1,6 +1,7 @@
 package mcphook_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/pietroperona/night-agent/internal/mcphook"
@@ -88,5 +89,37 @@ func TestExitCode_SandboxIsZero(t *testing.T) {
 	// sandbox = eseguito in isolamento, Claude Code può continuare
 	if mcphook.ExitCode("sandbox") != 0 {
 		t.Error("sandbox deve restituire exit code 0")
+	}
+}
+
+func TestParseStdin_BashCommand(t *testing.T) {
+	stdin := `{"tool_name":"Bash","tool_input":{"command":"sudo rm -rf /tmp","workdir":"/home/user"}}`
+	parsed, err := mcphook.ParseStdin(strings.NewReader(stdin))
+	if err != nil {
+		t.Fatalf("ParseStdin: %v", err)
+	}
+	if parsed.ToolName != "Bash" {
+		t.Errorf("tool_name: got %q", parsed.ToolName)
+	}
+	if parsed.Command != "sudo rm -rf /tmp" {
+		t.Errorf("command: got %q", parsed.Command)
+	}
+}
+
+func TestParseStdin_EditFile(t *testing.T) {
+	stdin := `{"tool_name":"Edit","tool_input":{"file_path":"/etc/passwd","old_string":"a","new_string":"b"}}`
+	parsed, err := mcphook.ParseStdin(strings.NewReader(stdin))
+	if err != nil {
+		t.Fatalf("ParseStdin: %v", err)
+	}
+	if parsed.Path != "/etc/passwd" {
+		t.Errorf("path: got %q", parsed.Path)
+	}
+}
+
+func TestParseStdin_MalformedJSON(t *testing.T) {
+	_, err := mcphook.ParseStdin(strings.NewReader("not json"))
+	if err == nil {
+		t.Error("atteso errore su JSON malformato")
 	}
 }
