@@ -163,6 +163,11 @@ func fetchCloudPolicy(cloudCfgPath, policyPath string) (string, error) {
 		return "", fmt.Errorf("cloud policy: risposta vuota")
 	}
 
+	// valida il YAML prima di scriverlo — se non è una policy valida, ignora
+	if _, err := policy.LoadBytes(body); err != nil {
+		return "", fmt.Errorf("cloud policy non valida: %w", err)
+	}
+
 	// scrivi policy su disco e usala
 	if err := os.MkdirAll(filepath.Dir(policyPath), 0700); err != nil {
 		return "", err

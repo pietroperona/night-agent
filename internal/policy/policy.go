@@ -72,16 +72,18 @@ func Load(path string) (*Policy, error) {
 	if err != nil {
 		return nil, fmt.Errorf("impossibile leggere il file di policy: %w", err)
 	}
+	return LoadBytes(data)
+}
 
+// LoadBytes parsa e valida una policy da slice di byte YAML.
+func LoadBytes(data []byte) (*Policy, error) {
 	var p Policy
 	if err := yaml.Unmarshal(data, &p); err != nil {
 		return nil, fmt.Errorf("YAML non valido: %w", err)
 	}
-
 	if p.Version == 0 {
 		return nil, fmt.Errorf("campo 'version' mancante o zero nella policy")
 	}
-
 	return &p, nil
 }
 
