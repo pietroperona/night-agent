@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -10,7 +11,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pietroperona/night-agent/internal/audit"
 	"github.com/pietroperona/night-agent/internal/cloudconfig"
+	"github.com/pietroperona/night-agent/internal/configdir"
 	cloudsync "github.com/pietroperona/night-agent/internal/sync"
 	"github.com/spf13/cobra"
 )
@@ -53,28 +56,49 @@ func init() {
 	rootCmd.AddCommand(cloudCmd)
 }
 
+// cloudConfigPath restituisce il path di cloud.yaml nella config dir risolta.
 func cloudConfigPath() (string, error) {
-	home, err := os.UserHomeDir()
+	dir, err := resolveConfigDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, ".night-agent", "cloud.yaml"), nil
+	return filepath.Join(dir, "cloud.yaml"), nil
 }
 
+// cloudLogPath restituisce il path di audit.jsonl nella config dir risolta.
 func cloudLogPath() (string, error) {
-	home, err := os.UserHomeDir()
+	dir, err := resolveConfigDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, ".night-agent", "audit.jsonl"), nil
+	return filepath.Join(dir, "audit.jsonl"), nil
 }
 
 func runCloudConnect(_ *cobra.Command, args []string) error {
 	token := args[0]
 
-	cfgPath, err := cloudConfigPath()
+	cwd, err := os.Getwd()
 	if err != nil {
 		return err
+	}
+
+	// connect crea sempre una config dir locale (a meno che --global)
+	var cfgDir string
+	if globalConfig {
+		cfgDir, err = configdir.Global()
+	} else {
+		cfgDir, err = configdir.CreateLocal(cwd)
+	}
+	if err != nil {
+		return err
+	}
+
+	cfgPath := filepath.Join(cfgDir, "cloud.yaml")
+
+	// genera signing key dedicata per questa config dir
+	keyPath := filepath.Join(cfgDir, "signing.key")
+	if err := audit.GenerateKey(keyPath); err != nil {
+		return fmt.Errorf("generazione signing key: %w", err)
 	}
 
 	cfg, err := cloudconfig.Connect(cfgPath, token)
@@ -82,34 +106,69 @@ func runCloudConnect(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("connessione fallita: %w", err)
 	}
 
-	if err := registerSigningKey(cfg); err != nil {
+	// aggiungi .nightagent/ al .gitignore del progetto se non è config globale
+	if configdir.IsLocal(cfgDir) {
+		if err := addToGitignore(cwd, configdir.LocalDirName+"/"); err != nil {
+			fmt.Fprintf(os.Stderr, "  avviso: impossibile aggiornare .gitignore: %v\n", err)
+		}
+	}
+
+	if err := registerSigningKey(cfg, keyPath); err != nil {
 		fmt.Fprintf(os.Stderr, "  avviso: registrazione chiave di firma fallita: %v\n", err)
 	}
 
 	fmt.Println("  ✓ connesso al cloud Night Agent")
-	fmt.Printf("  endpoint : %s\n", cfg.Endpoint)
-	fmt.Printf("  machine  : %s\n", cfg.MachineID)
+	fmt.Printf("  config dir : %s\n", cfgDir)
+	fmt.Printf("  endpoint   : %s\n", cfg.Endpoint)
+	fmt.Printf("  machine    : %s\n", cfg.MachineID)
 	fmt.Println()
 	fmt.Println("  sync automatico: avvia il daemon con 'nightagent start'")
 	fmt.Println("  sync manuale   : 'nightagent cloud sync'")
 	return nil
 }
 
-// registerSigningKey invia la chiave di firma locale al backend cloud.
-// La chiave è già in formato hex — viene letta e inviata as-is.
-func registerSigningKey(cfg *cloudconfig.Config) error {
-	home, err := os.UserHomeDir()
+// addToGitignore aggiunge entry al .gitignore nella dir indicata se esiste.
+// Idempotente: non aggiunge se entry è già presente.
+func addToGitignore(dir, entry string) error {
+	gitignorePath := filepath.Join(dir, ".gitignore")
+	if _, err := os.Stat(gitignorePath); os.IsNotExist(err) {
+		return nil // nessun .gitignore, niente da fare
+	}
+
+	// controlla se entry già presente
+	f, err := os.Open(gitignorePath)
 	if err != nil {
 		return err
 	}
-	keyPath := filepath.Join(home, ".night-agent", "signing.key")
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		if strings.TrimSpace(scanner.Text()) == entry {
+			f.Close()
+			return nil // già presente
+		}
+	}
+	f.Close()
+
+	// appendi entry
+	out, err := os.OpenFile(gitignorePath, os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	_, err = fmt.Fprintf(out, "\n# Night Agent config locale\n%s\n", entry)
+	return err
+}
+
+// registerSigningKey invia la chiave di firma al backend cloud.
+// La chiave è in formato hex — viene letta e inviata as-is.
+func registerSigningKey(cfg *cloudconfig.Config, keyPath string) error {
 	keyBytes, err := os.ReadFile(keyPath)
 	if err != nil {
 		return fmt.Errorf("lettura signing.key: %w", err)
 	}
 
 	body, err := json.Marshal(map[string]string{
-		"machine_id": cfg.MachineID,
+		"machine_id":  cfg.MachineID,
 		"signing_key": strings.TrimSpace(string(keyBytes)),
 	})
 	if err != nil {
@@ -137,10 +196,11 @@ func registerSigningKey(cfg *cloudconfig.Config) error {
 }
 
 func runCloudStatus(_ *cobra.Command, _ []string) error {
-	cfgPath, err := cloudConfigPath()
+	dir, err := resolveConfigDir()
 	if err != nil {
 		return err
 	}
+	cfgPath := filepath.Join(dir, "cloud.yaml")
 
 	cfg, err := cloudconfig.Load(cfgPath)
 	if err != nil {
@@ -154,13 +214,14 @@ func runCloudStatus(_ *cobra.Command, _ []string) error {
 	}
 
 	fmt.Println("  cloud: connesso")
-	fmt.Printf("  endpoint  : %s\n", cfg.Endpoint)
-	fmt.Printf("  machine   : %s\n", cfg.MachineID)
+	fmt.Printf("  config dir : %s\n", dir)
+	fmt.Printf("  endpoint   : %s\n", cfg.Endpoint)
+	fmt.Printf("  machine    : %s\n", cfg.MachineID)
 
 	if cfg.Cursor != "" {
-		fmt.Printf("  cursore   : %s\n", cfg.Cursor)
+		fmt.Printf("  cursore    : %s\n", cfg.Cursor)
 	} else {
-		fmt.Println("  cursore   : nessun sync effettuato")
+		fmt.Println("  cursore    : nessun sync effettuato")
 	}
 
 	if !cfg.LastSync.IsZero() {
@@ -173,29 +234,28 @@ func runCloudStatus(_ *cobra.Command, _ []string) error {
 }
 
 func runCloudDisconnect(_ *cobra.Command, _ []string) error {
-	cfgPath, err := cloudConfigPath()
+	dir, err := resolveConfigDir()
 	if err != nil {
 		return err
 	}
+	cfgPath := filepath.Join(dir, "cloud.yaml")
 
 	if err := cloudconfig.Disconnect(cfgPath); err != nil {
 		return fmt.Errorf("disconnessione fallita: %w", err)
 	}
 
 	fmt.Println("  ✓ disconnesso dal cloud Night Agent")
-	fmt.Println("  token rimosso da ~/.night-agent/cloud.yaml")
+	fmt.Printf("  token rimosso da %s\n", cfgPath)
 	return nil
 }
 
 func runCloudSync(_ *cobra.Command, _ []string) error {
-	cfgPath, err := cloudConfigPath()
+	dir, err := resolveConfigDir()
 	if err != nil {
 		return err
 	}
-	logPath, err := cloudLogPath()
-	if err != nil {
-		return err
-	}
+	cfgPath := filepath.Join(dir, "cloud.yaml")
+	logPath := filepath.Join(dir, "audit.jsonl")
 
 	cfg, err := cloudconfig.Load(cfgPath)
 	if err != nil {
@@ -212,7 +272,6 @@ func runCloudSync(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	// rileggi config aggiornata per mostrare cursore
 	updated, _ := cloudconfig.Load(cfgPath)
 	fmt.Println("✓")
 	if updated != nil && updated.Cursor != "" {
