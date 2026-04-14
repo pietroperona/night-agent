@@ -35,12 +35,11 @@ func init() {
 }
 
 func runAgent(cmd *cobra.Command, args []string) error {
-	home, err := os.UserHomeDir()
+	guardianDir, err := resolveConfigDir()
 	if err != nil {
 		return err
 	}
 
-	guardianDir := filepath.Join(home, ".night-agent")
 	socketPath := filepath.Join(guardianDir, "night-agent.sock")
 
 	if !isDaemonRunning(socketPath) {

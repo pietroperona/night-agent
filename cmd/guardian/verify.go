@@ -20,11 +20,10 @@ func init() {
 }
 
 func runVerify(cmd *cobra.Command, args []string) error {
-	home, err := os.UserHomeDir()
+	guardianDir, err := resolveConfigDir()
 	if err != nil {
 		return err
 	}
-	guardianDir := filepath.Join(home, ".night-agent")
 	keyPath := filepath.Join(guardianDir, "signing.key")
 	logPath := filepath.Join(guardianDir, "audit.jsonl")
 

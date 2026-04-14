@@ -64,11 +64,11 @@ func init() {
 }
 
 func policyPath() (string, error) {
-	home, err := os.UserHomeDir()
+	dir, err := resolveConfigDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, ".night-agent", "policy.yaml"), nil
+	return filepath.Join(dir, "policy.yaml"), nil
 }
 
 func runPolicyList(cmd *cobra.Command, args []string) error {

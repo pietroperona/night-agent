@@ -101,11 +101,11 @@ func printJSON(events []audit.Event) error {
 }
 
 func guardianLogPath() (string, error) {
-	home, err := os.UserHomeDir()
+	dir, err := resolveConfigDir()
 	if err != nil {
 		return "", err
 	}
-	path := filepath.Join(home, ".night-agent", "audit.jsonl")
+	path := filepath.Join(dir, "audit.jsonl")
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return "", fmt.Errorf("log non trovato in %s — esegui prima 'night-agent init'", path)
 	}

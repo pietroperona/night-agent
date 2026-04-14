@@ -45,8 +45,8 @@ func runMCPHook(cmd *cobra.Command, args []string) error {
 
 	req := mcphook.BuildDaemonRequest(parsed)
 
-	home, _ := os.UserHomeDir()
-	socketPath := filepath.Join(home, ".night-agent", "night-agent.sock")
+	cfgDir, _ := resolveConfigDir()
+	socketPath := filepath.Join(cfgDir, "night-agent.sock")
 
 	decision, reason := queryDaemon(socketPath, req)
 
