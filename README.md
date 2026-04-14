@@ -521,12 +521,37 @@ nightagent --global cloud connect <TOKEN>
 
 ### Priorità caricamento policy
 
-All'avvio del daemon (`nightagent start`):
+All'avvio (`nightagent start`) la policy viene cercata in questo ordine:
 
-1. **Cloud** — se connesso, scarica la policy via `GET /api/policy?machine_id=X` e la scrive su disco
-2. **Locale** — usa `<config_dir>/policy.yaml`
-3. **Globale** — fallback su `~/.night-agent/policy.yaml`
-4. **Errore** — se nessuna policy trovata: `esegui nightagent init`
+1. **Cloud** — `GET /api/policy?machine_id=X` se connesso (vince sempre sulla policy locale)
+2. **Locale progetto** — `nightagent-policy.yaml` nella cwd, poi nei parent fino alla home
+3. **Globale** — `~/.night-agent/policy.yaml`
+4. **Nessuna** — tutto consentito (permissive)
+
+L'avvio stampa sempre la sorgente attiva:
+
+```text
+[policy] loaded from cloud (machine: abc12345)
+[policy] loaded from /Users/me/myproject/nightagent-policy.yaml
+[policy] loaded from ~/.night-agent/policy.yaml (global)
+[policy] no policy found — all actions allowed
+```
+
+Per ignorare il cloud e forzare la policy locale:
+
+```bash
+nightagent start --local-policy-only
+```
+
+### Hot-reload
+
+Mentre il daemon è in esecuzione, se crei o modifichi `nightagent-policy.yaml` nella directory corrente la policy viene ricaricata automaticamente senza riavviare:
+
+```text
+[policy] reloaded from /Users/me/myproject/nightagent-policy.yaml
+```
+
+Se il file viene eliminato, il daemon torna automaticamente alla priorità successiva (cloud se connesso, poi globale).
 
 ### Stato config
 
