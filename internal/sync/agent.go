@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/pietroperona/night-agent/internal/audit"
@@ -15,8 +17,9 @@ const batchSize = 100
 
 // IngestRequest è il payload inviato alla Cloud API.
 type IngestRequest struct {
-	MachineID string        `json:"machine_id"`
-	Batch     []audit.Event `json:"batch"`
+	MachineID  string        `json:"machine_id"`
+	Batch      []audit.Event `json:"batch"`
+	PolicyYAML string        `json:"policy_yaml,omitempty"`
 }
 
 // IngestResponse è la risposta della Cloud API.
@@ -27,9 +30,11 @@ type IngestResponse struct {
 
 // Agent legge eventi da logPath, li batchizza e li invia all'API cloud.
 type Agent struct {
-	cfgPath string
-	logPath string
-	client  *http.Client
+	cfgPath          string
+	logPath          string
+	policyPath       string // path file policy locale/globale da includere nel payload (vuoto = omit)
+	endpointOverride string // se non vuoto, sovrascrive cfg.Endpoint (usato nei test)
+	client           *http.Client
 }
 
 // NewAgent crea un Agent con HTTP client di default (timeout 30s).
@@ -39,6 +44,32 @@ func NewAgent(cfgPath, logPath string) *Agent {
 		logPath: logPath,
 		client:  &http.Client{Timeout: 30 * time.Second},
 	}
+}
+
+// WithEndpoint sovrascrive l'endpoint letto dalla config. Usato nei test.
+func (a *Agent) WithEndpoint(endpoint string) *Agent {
+	a.endpointOverride = endpoint
+	return a
+}
+
+// WithPolicyPath imposta il path della policy locale/globale da includere nel sync.
+// Da chiamare solo quando la policy è di sorgente locale o globale (non cloud).
+func (a *Agent) WithPolicyPath(path string) *Agent {
+	a.policyPath = path
+	return a
+}
+
+// readPolicyYAML legge il file policy e restituisce il contenuto come stringa.
+// Ritorna stringa vuota in caso di errore — fail-open.
+func (a *Agent) readPolicyYAML() string {
+	if a.policyPath == "" {
+		return ""
+	}
+	data, err := os.ReadFile(a.policyPath)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(data))
 }
 
 // SyncOnce legge tutti gli eventi post-cursor, li invia in batch e aggiorna il cursore.
@@ -61,8 +92,9 @@ func (a *Agent) SyncOnce() error {
 		return nil // niente da inviare
 	}
 
-	// invia in batch da batchSize
+	// invia in batch da batchSize — policy inclusa solo nel primo batch
 	var lastCursor string
+	policyYAML := a.readPolicyYAML()
 	for i := 0; i < len(pending); i += batchSize {
 		end := i + batchSize
 		if end > len(pending) {
@@ -70,7 +102,12 @@ func (a *Agent) SyncOnce() error {
 		}
 		batch := pending[i:end]
 
-		cursor, err := a.sendBatch(cfg, batch)
+		// includi policy solo nel primo batch, poi ometti
+		py := ""
+		if i == 0 {
+			py = policyYAML
+		}
+		cursor, err := a.sendBatch(cfg, batch, py)
 		if err != nil {
 			return err
 		}
@@ -87,10 +124,11 @@ func (a *Agent) SyncOnce() error {
 }
 
 // sendBatch invia un singolo batch all'API e ritorna il cursore ricevuto.
-func (a *Agent) sendBatch(cfg *cloudconfig.Config, batch []audit.Event) (string, error) {
+func (a *Agent) sendBatch(cfg *cloudconfig.Config, batch []audit.Event, policyYAML string) (string, error) {
 	req := IngestRequest{
-		MachineID: cfg.MachineID,
-		Batch:     batch,
+		MachineID:  cfg.MachineID,
+		Batch:      batch,
+		PolicyYAML: policyYAML,
 	}
 
 	body, err := json.Marshal(req)
@@ -98,7 +136,11 @@ func (a *Agent) sendBatch(cfg *cloudconfig.Config, batch []audit.Event) (string,
 		return "", fmt.Errorf("serializzazione batch: %w", err)
 	}
 
-	httpReq, err := http.NewRequest(http.MethodPost, cfg.Endpoint+"/api/ingest", bytes.NewReader(body))
+	endpoint := cfg.Endpoint
+	if a.endpointOverride != "" {
+		endpoint = a.endpointOverride
+	}
+	httpReq, err := http.NewRequest(http.MethodPost, endpoint+"/api/ingest", bytes.NewReader(body))
 	if err != nil {
 		return "", fmt.Errorf("creazione richiesta: %w", err)
 	}

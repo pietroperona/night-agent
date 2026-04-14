@@ -122,6 +122,10 @@ func runStart(_ *cobra.Command, _ []string) error {
 			ticker := time.NewTicker(30 * time.Second)
 			defer ticker.Stop()
 			agent := nightsync.NewAgent(cloudCfgPath, logPath)
+			// includi policy nel payload solo se locale o globale (non cloud)
+			if lp.Source == policy.SourceLocal || lp.Source == policy.SourceGlobal {
+				agent.WithPolicyPath(lp.Path)
+			}
 			for range ticker.C {
 				_ = agent.SyncOnce()
 			}

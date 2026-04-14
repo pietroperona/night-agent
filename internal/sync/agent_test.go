@@ -66,7 +66,7 @@ func TestSyncOnce_SendsBatch(t *testing.T) {
 	}
 	cloudconfig.Save(cfgPath, cfg)
 
-	agent := cloudsync.NewAgent(cfgPath, logPath)
+	agent := cloudsync.NewAgent(cfgPath, logPath).WithEndpoint(srv.URL)
 	if err := agent.SyncOnce(); err != nil {
 		t.Fatalf("SyncOnce: %v", err)
 	}
@@ -114,7 +114,7 @@ func TestSyncOnce_RespectsCursor(t *testing.T) {
 	}
 	cloudconfig.Save(cfgPath, cfg)
 
-	agent := cloudsync.NewAgent(cfgPath, logPath)
+	agent := cloudsync.NewAgent(cfgPath, logPath).WithEndpoint(srv.URL)
 	if err := agent.SyncOnce(); err != nil {
 		t.Fatalf("SyncOnce: %v", err)
 	}
@@ -151,7 +151,7 @@ func TestSyncOnce_NothingToSync(t *testing.T) {
 	}
 	cloudconfig.Save(cfgPath, cfg)
 
-	agent := cloudsync.NewAgent(cfgPath, logPath)
+	agent := cloudsync.NewAgent(cfgPath, logPath).WithEndpoint(srv.URL)
 	if err := agent.SyncOnce(); err != nil {
 		t.Fatalf("SyncOnce: %v", err)
 	}
@@ -179,7 +179,7 @@ func TestSyncOnce_401_ReturnsError(t *testing.T) {
 	}
 	cloudconfig.Save(cfgPath, cfg)
 
-	agent := cloudsync.NewAgent(cfgPath, logPath)
+	agent := cloudsync.NewAgent(cfgPath, logPath).WithEndpoint(srv.URL)
 	err := agent.SyncOnce()
 	if err == nil {
 		t.Fatal("atteso errore su 401, ricevuto nil")
@@ -222,7 +222,7 @@ func TestSyncOnce_BatchLimit(t *testing.T) {
 	}
 	cloudconfig.Save(cfgPath, cfg)
 
-	agent := cloudsync.NewAgent(cfgPath, logPath)
+	agent := cloudsync.NewAgent(cfgPath, logPath).WithEndpoint(srv.URL)
 	if err := agent.SyncOnce(); err != nil {
 		t.Fatalf("SyncOnce: %v", err)
 	}
@@ -266,7 +266,7 @@ func TestSyncOnce_UpdatesCursorAfterSync(t *testing.T) {
 	}
 	cloudconfig.Save(cfgPath, cfg)
 
-	agent := cloudsync.NewAgent(cfgPath, logPath)
+	agent := cloudsync.NewAgent(cfgPath, logPath).WithEndpoint(srv.URL)
 	if err := agent.SyncOnce(); err != nil {
 		t.Fatalf("SyncOnce: %v", err)
 	}
@@ -281,5 +281,64 @@ func TestSyncOnce_UpdatesCursorAfterSync(t *testing.T) {
 	}
 	if updated.LastSync.IsZero() {
 		t.Error("LastSync non aggiornato dopo sync riuscito")
+	}
+}
+
+func TestSyncOnce_IncludesPolicyYAML_WhenLocalFile(t *testing.T) {
+	dir := t.TempDir()
+	policyContent := "version: 1\nrules: []\n"
+	policyPath := filepath.Join(dir, "policy.yaml")
+	if err := os.WriteFile(policyPath, []byte(policyContent), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	var received cloudsync.IngestRequest
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewDecoder(r.Body).Decode(&received)
+		json.NewEncoder(w).Encode(cloudsync.IngestResponse{Received: 1, Cursor: "c1"})
+	}))
+	defer srv.Close()
+
+	events := []audit.Event{{ID: "e1", Command: "ls", Decision: "allow", Timestamp: time.Now()}}
+	logPath := writeEvents(t, dir, events)
+	cfgPath := filepath.Join(dir, "cloud.yaml")
+	cloudconfig.Connect(cfgPath, "tok")
+	cfg, _ := cloudconfig.Load(cfgPath)
+	cfg.Endpoint = srv.URL
+	cloudconfig.Save(cfgPath, cfg)
+
+	agent := cloudsync.NewAgent(cfgPath, logPath).WithEndpoint(srv.URL).WithPolicyPath(policyPath)
+	if err := agent.SyncOnce(); err != nil {
+		t.Fatalf("SyncOnce: %v", err)
+	}
+	if received.PolicyYAML != "version: 1\nrules: []" {
+		t.Errorf("policy_yaml: want trimmed content, got %q", received.PolicyYAML)
+	}
+}
+
+func TestSyncOnce_OmitsPolicyYAML_WhenNoPath(t *testing.T) {
+	dir := t.TempDir()
+
+	var received cloudsync.IngestRequest
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewDecoder(r.Body).Decode(&received)
+		json.NewEncoder(w).Encode(cloudsync.IngestResponse{Received: 1, Cursor: "c1"})
+	}))
+	defer srv.Close()
+
+	events := []audit.Event{{ID: "e1", Command: "ls", Decision: "allow", Timestamp: time.Now()}}
+	logPath := writeEvents(t, dir, events)
+	cfgPath := filepath.Join(dir, "cloud.yaml")
+	cloudconfig.Connect(cfgPath, "tok")
+	cfg, _ := cloudconfig.Load(cfgPath)
+	cfg.Endpoint = srv.URL
+	cloudconfig.Save(cfgPath, cfg)
+
+	agent := cloudsync.NewAgent(cfgPath, logPath).WithEndpoint(srv.URL) // no WithPolicyPath
+	if err := agent.SyncOnce(); err != nil {
+		t.Fatalf("SyncOnce: %v", err)
+	}
+	if received.PolicyYAML != "" {
+		t.Errorf("policy_yaml atteso vuoto, got %q", received.PolicyYAML)
 	}
 }
