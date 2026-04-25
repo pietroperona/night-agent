@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pietroperona/night-agent/internal/audit"
-	"github.com/pietroperona/night-agent/internal/daemon"
-	"github.com/pietroperona/night-agent/internal/policy"
+	"github.com/night-agent-cli/night-agent/internal/audit"
+	"github.com/night-agent-cli/night-agent/internal/daemon"
+	"github.com/night-agent-cli/night-agent/internal/policy"
 )
 
 func buildTestPolicy() *policy.Policy {

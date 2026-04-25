@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pietroperona/night-agent/internal/shim"
+	"github.com/night-agent-cli/night-agent/internal/shim"
 )
 
 func TestShimDir(t *testing.T) {

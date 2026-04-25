@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pietroperona/night-agent/internal/mcphook"
+	"github.com/night-agent-cli/night-agent/internal/mcphook"
 )
 
 func TestParseInput_BashCommand(t *testing.T) {

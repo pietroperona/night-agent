@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/pietroperona/night-agent/internal/audit"
+	"github.com/night-agent-cli/night-agent/internal/audit"
 	"github.com/spf13/cobra"
 )
 

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pietroperona/night-agent/internal/wizard"
+	"github.com/night-agent-cli/night-agent/internal/wizard"
 )
 
 func TestParseAnswer_Yes(t *testing.T) {

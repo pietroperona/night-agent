@@ -6,13 +6,13 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/pietroperona/night-agent/internal/audit"
-	"github.com/pietroperona/night-agent/internal/claudehook"
-	"github.com/pietroperona/night-agent/internal/launchagent"
-	"github.com/pietroperona/night-agent/internal/policy"
-	"github.com/pietroperona/night-agent/internal/shell"
-	"github.com/pietroperona/night-agent/internal/shim"
-	"github.com/pietroperona/night-agent/internal/wizard"
+	"github.com/night-agent-cli/night-agent/internal/audit"
+	"github.com/night-agent-cli/night-agent/internal/claudehook"
+	"github.com/night-agent-cli/night-agent/internal/launchagent"
+	"github.com/night-agent-cli/night-agent/internal/policy"
+	"github.com/night-agent-cli/night-agent/internal/shell"
+	"github.com/night-agent-cli/night-agent/internal/shim"
+	"github.com/night-agent-cli/night-agent/internal/wizard"
 	"github.com/spf13/cobra"
 )
 

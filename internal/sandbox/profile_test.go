@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pietroperona/night-agent/internal/sandbox"
+	"github.com/night-agent-cli/night-agent/internal/sandbox"
 )
 
 // --- TestLoadProfile ---

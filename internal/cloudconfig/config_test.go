@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pietroperona/night-agent/internal/cloudconfig"
+	"github.com/night-agent-cli/night-agent/internal/cloudconfig"
 )
 
 func TestLoad_FileNotExist_ReturnsEmpty(t *testing.T) {

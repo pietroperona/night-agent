@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pietroperona/night-agent/internal/audit"
-	"github.com/pietroperona/night-agent/internal/cloudconfig"
+	"github.com/night-agent-cli/night-agent/internal/audit"
+	"github.com/night-agent-cli/night-agent/internal/cloudconfig"
 )
 
 const batchSize = 100

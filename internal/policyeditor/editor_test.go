@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pietroperona/night-agent/internal/policyeditor"
-	"github.com/pietroperona/night-agent/internal/policy"
+	"github.com/night-agent-cli/night-agent/internal/policyeditor"
+	"github.com/night-agent-cli/night-agent/internal/policy"
 )
 
 func writePolicy(t *testing.T, content string) string {

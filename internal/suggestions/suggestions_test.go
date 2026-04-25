@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pietroperona/night-agent/internal/audit"
-	"github.com/pietroperona/night-agent/internal/scorer"
-	"github.com/pietroperona/night-agent/internal/suggestions"
+	"github.com/night-agent-cli/night-agent/internal/audit"
+	"github.com/night-agent-cli/night-agent/internal/scorer"
+	"github.com/night-agent-cli/night-agent/internal/suggestions"
 )
 
 func makeAction(actionType, command, path string) scorer.Action {

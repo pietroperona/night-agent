@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/pietroperona/night-agent/internal/configdir"
+	"github.com/night-agent-cli/night-agent/internal/configdir"
 )
 
 // resolveConfigDir restituisce la config dir da usare per il comando corrente.

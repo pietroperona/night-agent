@@ -1,4 +1,4 @@
-module github.com/pietroperona/night-agent
+module github.com/night-agent-cli/night-agent
 
 go 1.26.1
 

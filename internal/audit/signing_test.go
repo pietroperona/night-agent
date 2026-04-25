@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pietroperona/night-agent/internal/audit"
+	"github.com/night-agent-cli/night-agent/internal/audit"
 )
 
 func TestGenerateKey_CreatesFile(t *testing.T) {

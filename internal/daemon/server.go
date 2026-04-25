@@ -11,12 +11,12 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/pietroperona/night-agent/internal/audit"
-	"github.com/pietroperona/night-agent/internal/interception"
-	"github.com/pietroperona/night-agent/internal/policy"
-	"github.com/pietroperona/night-agent/internal/sandbox"
-	"github.com/pietroperona/night-agent/internal/scorer"
-	"github.com/pietroperona/night-agent/internal/suggestions"
+	"github.com/night-agent-cli/night-agent/internal/audit"
+	"github.com/night-agent-cli/night-agent/internal/interception"
+	"github.com/night-agent-cli/night-agent/internal/policy"
+	"github.com/night-agent-cli/night-agent/internal/sandbox"
+	"github.com/night-agent-cli/night-agent/internal/scorer"
+	"github.com/night-agent-cli/night-agent/internal/suggestions"
 )
 
 // Request è il messaggio inviato dalla shell hook al daemon.

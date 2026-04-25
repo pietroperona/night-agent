@@ -3,8 +3,8 @@ package interception_test
 import (
 	"testing"
 
-	"github.com/pietroperona/night-agent/internal/interception"
-	"github.com/pietroperona/night-agent/internal/policy"
+	"github.com/night-agent-cli/night-agent/internal/interception"
+	"github.com/night-agent-cli/night-agent/internal/policy"
 )
 
 func TestNormalize_ShellCommand(t *testing.T) {

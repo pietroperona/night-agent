@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pietroperona/night-agent/internal/audit"
-	"github.com/pietroperona/night-agent/internal/cloudconfig"
-	cloudsync "github.com/pietroperona/night-agent/internal/sync"
+	"github.com/night-agent-cli/night-agent/internal/audit"
+	"github.com/night-agent-cli/night-agent/internal/cloudconfig"
+	cloudsync "github.com/night-agent-cli/night-agent/internal/sync"
 )
 
 // writeEvents scrive eventi nel file JSONL e restituisce il path.

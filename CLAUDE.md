@@ -117,7 +117,7 @@ Fail-safe: se Docker non è disponibile → blocca con messaggio esplicito.
 
 ## Repository & Git Workflow
 
-- **Remote**: [github.com/pietroperona/night-agent](https://github.com/pietroperona/night-agent)
+- **Remote**: [github.com/night-agent-cli/night-agent](https://github.com/night-agent-cli/night-agent)
 - **Branch principali**: `main` (produzione), `develop`
 - **Commit**: non citare mai il nome di strumenti AI nei messaggi di commit
 

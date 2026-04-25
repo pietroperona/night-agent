@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pietroperona/night-agent/internal/configdir"
+	"github.com/night-agent-cli/night-agent/internal/configdir"
 )
 
 func TestResolve_LocalExists_ReturnsLocal(t *testing.T) {

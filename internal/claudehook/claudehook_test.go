@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pietroperona/night-agent/internal/claudehook"
+	"github.com/night-agent-cli/night-agent/internal/claudehook"
 )
 
 func TestIsConfigured_FalseWhenMissing(t *testing.T) {

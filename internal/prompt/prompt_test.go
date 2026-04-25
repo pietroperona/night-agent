@@ -3,7 +3,7 @@ package prompt_test
 import (
 	"testing"
 
-	"github.com/pietroperona/night-agent/internal/prompt"
+	"github.com/night-agent-cli/night-agent/internal/prompt"
 )
 
 // --- PromptResponse ---

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pietroperona/night-agent/internal/audit"
+	"github.com/night-agent-cli/night-agent/internal/audit"
 )
 
 // RiskLevel rappresenta il livello di rischio calcolato dallo scorer.

@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/pietroperona/night-agent/internal/sandbox"
+	"github.com/night-agent-cli/night-agent/internal/sandbox"
 	"github.com/spf13/cobra"
 )
 

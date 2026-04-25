@@ -8,12 +8,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/pietroperona/night-agent/internal/audit"
-	"github.com/pietroperona/night-agent/internal/cloudconfig"
-	"github.com/pietroperona/night-agent/internal/configdir"
-	"github.com/pietroperona/night-agent/internal/daemon"
-	"github.com/pietroperona/night-agent/internal/policy"
-	nightsync "github.com/pietroperona/night-agent/internal/sync"
+	"github.com/night-agent-cli/night-agent/internal/audit"
+	"github.com/night-agent-cli/night-agent/internal/cloudconfig"
+	"github.com/night-agent-cli/night-agent/internal/configdir"
+	"github.com/night-agent-cli/night-agent/internal/daemon"
+	"github.com/night-agent-cli/night-agent/internal/policy"
+	nightsync "github.com/night-agent-cli/night-agent/internal/sync"
 	"github.com/spf13/cobra"
 )
 

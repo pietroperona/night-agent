@@ -12,7 +12,7 @@ import (
 
 // defaultEndpoint è iniettato a compile time via ldflags:
 //
-//	go build -ldflags "-X github.com/pietroperona/night-agent/internal/cloudconfig.defaultEndpoint=https://..."
+//	go build -ldflags "-X github.com/night-agent-cli/night-agent/internal/cloudconfig.defaultEndpoint=https://..."
 //
 // Non esporre mai questo valore come flag CLI — l'utente non deve poterlo cambiare.
 var defaultEndpoint = "https://api.nightagent.dev"

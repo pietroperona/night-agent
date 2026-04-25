@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO="pietroperona/night-agent"
+REPO="night-agent-cli/night-agent"
 INSTALL_BIN="/usr/local/bin"
 INSTALL_LIB="/usr/local/lib/night-agent"
 CONFIG_DIR="$HOME/.night-agent"

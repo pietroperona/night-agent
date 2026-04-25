@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pietroperona/night-agent/internal/audit"
-	"github.com/pietroperona/night-agent/internal/cloudconfig"
-	"github.com/pietroperona/night-agent/internal/configdir"
-	cloudsync "github.com/pietroperona/night-agent/internal/sync"
+	"github.com/night-agent-cli/night-agent/internal/audit"
+	"github.com/night-agent-cli/night-agent/internal/cloudconfig"
+	"github.com/night-agent-cli/night-agent/internal/configdir"
+	cloudsync "github.com/night-agent-cli/night-agent/internal/sync"
 	"github.com/spf13/cobra"
 )
 

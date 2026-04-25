@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pietroperona/night-agent/internal/audit"
-	"github.com/pietroperona/night-agent/internal/scorer"
+	"github.com/night-agent-cli/night-agent/internal/audit"
+	"github.com/night-agent-cli/night-agent/internal/scorer"
 )
 
 // Engine genera suggerimenti di policy contestuali.

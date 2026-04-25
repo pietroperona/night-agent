@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pietroperona/night-agent/internal/policy"
-	"github.com/pietroperona/night-agent/internal/policyeditor"
+	"github.com/night-agent-cli/night-agent/internal/policy"
+	"github.com/night-agent-cli/night-agent/internal/policyeditor"
 	"github.com/spf13/cobra"
 )
 

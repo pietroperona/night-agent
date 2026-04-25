@@ -31,7 +31,7 @@ Il daemon gira in background, avviato automaticamente al login tramite LaunchAge
 ### Metodo rapido (consigliato)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/pietroperona/night-agent/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/night-agent-cli/night-agent/main/install.sh | bash
 ```
 
 Poi inizializza:
@@ -65,7 +65,7 @@ xcode-select --install
 #### Build
 
 ```bash
-git clone https://github.com/pietroperona/night-agent
+git clone https://github.com/night-agent-cli/night-agent
 cd night-agent
 make all
 ```

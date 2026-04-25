@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pietroperona/night-agent/internal/intercept"
+	"github.com/night-agent-cli/night-agent/internal/intercept"
 )
 
 func TestBuildEnv_SetsDYLD(t *testing.T) {
