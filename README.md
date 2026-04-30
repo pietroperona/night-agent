@@ -7,7 +7,7 @@
 
 **Intercetta e governa ogni comando eseguito dagli agenti AI sul tuo Mac.**
 
-Gli agenti AI come Claude Code, Codex o Cursor possono eseguire comandi shell, modificare file, fare push su Git — spesso senza che tu li veda. Night Agent si mette in mezzo: ogni azione passa per un policy engine che decide se permetterla, bloccarla o eseguirla in un container Docker isolato, secondo regole che definisci tu in YAML.
+Gli agenti AI come Claude Code, Codex o Cursor possono eseguire comandi shell, modificare file, fare push su Git spesso senza che tu li veda. Night Agent si mette in mezzo: ogni azione passa per un policy engine che decide se permetterla, bloccarla o eseguirla in un container Docker isolato, secondo regole che definisci tu in YAML.
 
 ---
 
