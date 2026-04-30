@@ -1,0 +1,395 @@
+package daemon
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/json"
+	"fmt"
+	"net"
+	"os"
+	"strings"
+	"sync"
+
+	"github.com/google/uuid"
+	"github.com/night-agent-cli/night-agent/internal/audit"
+	"github.com/night-agent-cli/night-agent/internal/interception"
+	"github.com/night-agent-cli/night-agent/internal/policy"
+	"github.com/night-agent-cli/night-agent/internal/sandbox"
+	"github.com/night-agent-cli/night-agent/internal/scorer"
+	"github.com/night-agent-cli/night-agent/internal/suggestions"
+)
+
+// Request è il messaggio inviato dalla shell hook al daemon.
+// Type può essere "eval" (default) o "policy_write".
+type Request struct {
+	Type       string `json:"type,omitempty"`        // "eval" (default) | "policy_write"
+	Command    string `json:"command"`
+	WorkDir    string `json:"work_dir"`
+	AgentName  string `json:"agent_name"`
+	PolicyYAML string `json:"policy_yaml,omitempty"` // per type="policy_write"
+}
+
+// Response è la risposta del daemon alla shell hook.
+type Response struct {
+	Decision string `json:"decision"`
+	Reason   string `json:"reason"`
+	RuleID   string `json:"rule_id"`
+	// Campi sandbox: presenti solo quando il daemon ha eseguito il comando in Docker.
+	ExitCode *int   `json:"exit_code,omitempty"`
+	Output   string `json:"output,omitempty"`
+}
+
+// Server è il daemon che ascolta su Unix socket e valuta le richieste.
+type Server struct {
+	socketPath      string
+	mu              sync.RWMutex
+	policy          *policy.Policy
+	policyPath      string
+	logger          *audit.Logger
+	listener        net.Listener
+	quit            chan struct{}
+	scorer          *scorer.Scorer
+	suggestions     *suggestions.Engine
+	logPath         string    // path del log JSONL per leggere la storia eventi
+	lastWrittenHash [32]byte  // hash SHA256 dell'ultima policy scritta dal daemon
+	hashMu          sync.Mutex
+}
+
+// UpdatePolicy sostituisce la policy attiva in modo thread-safe.
+func (s *Server) UpdatePolicy(p *policy.Policy) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.policy = p
+}
+
+// SetInitialHash imposta l'hash dell'ultima policy scritta (chiamato al boot
+// con il contenuto del file già presente su disco).
+func (s *Server) SetInitialHash(content []byte) {
+	h := sha256.Sum256(content)
+	s.hashMu.Lock()
+	s.lastWrittenHash = h
+	s.hashMu.Unlock()
+}
+
+// IsTrustedFileContent verifica che il contenuto del file corrisponda all'ultimo
+// hash scritto dal daemon. Usato da Watch() per rifiutare modifiche esterne.
+func (s *Server) IsTrustedFileContent(content []byte) bool {
+	h := sha256.Sum256(content)
+	s.hashMu.Lock()
+	defer s.hashMu.Unlock()
+	return h == s.lastWrittenHash
+}
+
+// WritePolicyFile valida il YAML, aggiorna l'hash trusted, scrive su disco e
+// aggiorna la policy in-memory. È l'unico canale autorizzato per modificare
+// i file di policy su disco.
+func (s *Server) WritePolicyFile(yamlContent []byte) error {
+	p, err := policy.LoadBytes(yamlContent)
+	if err != nil {
+		return fmt.Errorf("policy YAML non valido: %w", err)
+	}
+	if s.policyPath == "" {
+		return fmt.Errorf("policyPath non configurato nel daemon")
+	}
+	// aggiorna hash trusted prima di scrivere
+	h := sha256.Sum256(yamlContent)
+	s.hashMu.Lock()
+	s.lastWrittenHash = h
+	s.hashMu.Unlock()
+
+	// rimuovi lock temporaneamente, scrivi, ri-applica lock
+	_ = policy.UnlockFile(s.policyPath)
+	writeErr := os.WriteFile(s.policyPath, yamlContent, 0600)
+	_ = policy.RelockFile(s.policyPath)
+	if writeErr != nil {
+		return fmt.Errorf("errore scrittura policy: %w", writeErr)
+	}
+	s.UpdatePolicy(p)
+	return nil
+}
+
+// NewServer crea il daemon e apre il Unix socket.
+func NewServer(socketPath string, p *policy.Policy, logger *audit.Logger) (*Server, error) {
+	return newServer(socketPath, "", p, logger)
+}
+
+// NewServerWithPolicyPath crea il daemon con il path della policy per allow_always.
+func NewServerWithPolicyPath(socketPath, policyPath string, p *policy.Policy, logger *audit.Logger) (*Server, error) {
+	return newServer(socketPath, policyPath, p, logger)
+}
+
+func newServer(socketPath, policyPath string, p *policy.Policy, logger *audit.Logger) (*Server, error) {
+	_ = os.Remove(socketPath)
+
+	ln, err := net.Listen("unix", socketPath)
+	if err != nil {
+		return nil, fmt.Errorf("impossibile creare il socket: %w", err)
+	}
+
+	return &Server{
+		socketPath:  socketPath,
+		policy:      p,
+		policyPath:  policyPath,
+		logger:      logger,
+		listener:    ln,
+		quit:        make(chan struct{}),
+		scorer:      scorer.New(),
+		suggestions: suggestions.New(),
+	}, nil
+}
+
+// WithLogPath imposta il path del log JSONL per il context-aware scoring.
+func (s *Server) WithLogPath(logPath string) {
+	s.logPath = logPath
+}
+
+// Serve avvia il loop di accettazione delle connessioni.
+func (s *Server) Serve() {
+	for {
+		conn, err := s.listener.Accept()
+		if err != nil {
+			select {
+			case <-s.quit:
+				return
+			default:
+				continue
+			}
+		}
+		go s.handle(conn)
+	}
+}
+
+// Stop ferma il daemon.
+func (s *Server) Stop() {
+	close(s.quit)
+	s.listener.Close()
+	os.Remove(s.socketPath)
+}
+
+func (s *Server) handle(conn net.Conn) {
+	defer conn.Close()
+
+	var req Request
+	if err := json.NewDecoder(conn).Decode(&req); err != nil {
+		writeError(conn, "richiesta non valida")
+		return
+	}
+
+	// Gestione policy_write: solo dal CLI nightagent policy edit
+	if req.Type == "policy_write" {
+		s.handlePolicyWrite(conn, req)
+		return
+	}
+
+	action, err := interception.Normalize(req.Command, req.WorkDir, req.AgentName)
+	if err != nil {
+		writeError(conn, err.Error())
+		return
+	}
+
+	s.mu.RLock()
+	result := s.policy.Evaluate(action.ToPolicyAction())
+	s.mu.RUnlock()
+
+	// "ask" a runtime si comporta come "block" — la configurazione avviene durante init
+	decision := result.Decision
+	if decision == policy.DecisionAsk {
+		decision = policy.DecisionBlock
+	}
+
+	// --- Cycle 3: risk scoring contestuale ---
+	scorerAction := scorer.Action{
+		Type:    string(action.Type),
+		Command: req.Command,
+		Path:    action.Path,
+		WorkDir: req.WorkDir,
+	}
+
+	// Leggi storia eventi recenti per scoring contestuale (ultimi 50)
+	recentEvents := s.recentEvents(50)
+	scoreResult := s.scorer.Score(scorerAction, recentEvents)
+	hints := s.suggestions.Suggest(scorerAction, scoreResult, recentEvents)
+
+	// Stampa segnali di anomalia se presenti
+	if scoreResult.AnomalyDetected {
+		fmt.Printf("  [!] anomalia rilevata: %v\n", scoreResult.Signals)
+	}
+	if len(hints) > 0 {
+		for _, h := range hints {
+			fmt.Printf("  [→] suggerimento: %s\n", h)
+		}
+	}
+
+	event := audit.Event{
+		ID:              uuid.New().String(),
+		AgentName:       req.AgentName,
+		WorkDir:         req.WorkDir,
+		Command:         req.Command,
+		ActionType:      string(action.Type),
+		Decision:        string(decision),
+		RuleID:          result.RuleID,
+		Reason:          result.Reason,
+		RiskScore:       scoreResult.Score,
+		RiskLevel:       string(scoreResult.Level),
+		RiskSignals:     scoreResult.Signals,
+		AnomalyDetected: scoreResult.AnomalyDetected,
+		Suggestions:     hints,
+	}
+
+	resp := Response{
+		Decision: string(decision),
+		Reason:   result.Reason,
+		RuleID:   result.RuleID,
+	}
+
+	// Gestione sandbox: esegui il comando in Docker e restituisci il risultato.
+	if decision == policy.DecisionSandbox {
+		mgr := sandbox.New()
+		if !mgr.IsAvailable() {
+			// Docker non disponibile: fail safe — blocca e notifica.
+			event.Decision = string(policy.DecisionBlock)
+			event.Reason = "Docker non disponibile — sandbox non attivabile"
+			_ = s.logger.Write(event)
+			logDecision(policy.DecisionBlock, req.Command, event.Reason)
+			resp.Decision = string(policy.DecisionBlock)
+			resp.Reason = event.Reason
+			_ = json.NewEncoder(conn).Encode(resp)
+			return
+		}
+
+		cfg := sandbox.Config{
+			Image:   sandboxImage(result),
+			Network: sandboxNetwork(result),
+			WorkDir: req.WorkDir,
+		}
+
+		// Carica il profilo sandbox del progetto (.guardian.yaml nella workdir)
+		// e lo fonde con la config della regola (la regola ha priorità).
+		if req.WorkDir != "" {
+			profile, profileErr := sandbox.LoadProfile(req.WorkDir)
+			if profileErr != nil {
+				fmt.Printf("  avviso profilo sandbox: %v\n", profileErr)
+			} else {
+				cfg = sandbox.MergeConfig(cfg, profile)
+			}
+		}
+
+		// Riscrive i path host nel comando con i path container equivalenti.
+		// Il workspace è montato come /workspace nel container.
+		command := rewriteHostPaths(req.Command, req.WorkDir)
+
+		sandboxResult, execErr := mgr.Execute(context.Background(), command, cfg)
+		if execErr != nil {
+			event.Decision = string(policy.DecisionBlock)
+			event.Reason = fmt.Sprintf("errore sandbox: %v", execErr)
+			_ = s.logger.Write(event)
+			logDecision(policy.DecisionBlock, req.Command, event.Reason)
+			resp.Decision = string(policy.DecisionBlock)
+			resp.Reason = event.Reason
+			_ = json.NewEncoder(conn).Encode(resp)
+			return
+		}
+
+		// Aggiorna evento con dettagli sandbox
+		event.Sandboxed = true
+		event.SandboxImage = cfg.Image
+		event.SandboxExitCode = &sandboxResult.ExitCode
+		_ = s.logger.Write(event)
+
+		logDecision(policy.DecisionSandbox, req.Command, result.Reason)
+		fmt.Printf("  immagine: %s  rete: %s  exit: %d\n", cfg.Image, cfg.Network, sandboxResult.ExitCode)
+
+		resp.ExitCode = &sandboxResult.ExitCode
+		resp.Output = sandboxResult.Stdout
+		_ = json.NewEncoder(conn).Encode(resp)
+		return
+	}
+
+	_ = s.logger.Write(event)
+	logDecision(decision, req.Command, result.Reason)
+	_ = json.NewEncoder(conn).Encode(resp)
+}
+
+// handlePolicyWrite gestisce le richieste di aggiornamento policy dal CLI.
+func (s *Server) handlePolicyWrite(conn net.Conn, req Request) {
+	if req.PolicyYAML == "" {
+		writeError(conn, "policy_yaml vuoto")
+		return
+	}
+	if err := s.WritePolicyFile([]byte(req.PolicyYAML)); err != nil {
+		writeError(conn, err.Error())
+		return
+	}
+	fmt.Println("[policy] aggiornata via 'nightagent policy edit'")
+	resp := Response{Decision: string(policy.DecisionAllow), Reason: "policy aggiornata"}
+	_ = json.NewEncoder(conn).Encode(resp)
+}
+
+// recentEvents legge gli ultimi n eventi dal log JSONL.
+// Se il log non è disponibile restituisce slice vuota (fail-safe).
+func (s *Server) recentEvents(n int) []audit.Event {
+	if s.logPath == "" {
+		return nil
+	}
+	events, err := audit.ReadAll(s.logPath)
+	if err != nil || len(events) == 0 {
+		return nil
+	}
+	if len(events) <= n {
+		return events
+	}
+	return events[len(events)-n:]
+}
+
+func writeError(conn net.Conn, msg string) {
+	resp := Response{Decision: string(policy.DecisionBlock), Reason: msg}
+	_ = json.NewEncoder(conn).Encode(resp)
+}
+
+func logDecision(decision policy.Decision, command, reason string) {
+	icon := map[policy.Decision]string{
+		policy.DecisionAllow:   "✓",
+		policy.DecisionBlock:   "✗",
+		policy.DecisionAsk:     "?",
+		policy.DecisionSandbox: "⬡",
+	}[decision]
+
+	cmd := command
+	if len(cmd) > 60 {
+		cmd = cmd[:57] + "..."
+	}
+
+	if reason != "" {
+		fmt.Printf("[%s] %s  →  %s\n", icon, cmd, reason)
+	} else {
+		fmt.Printf("[%s] %s\n", icon, cmd)
+	}
+}
+
+// sandboxImage restituisce l'immagine Docker dalla SandboxConfig della regola,
+// o il default se non specificata.
+func sandboxImage(result policy.EvalResult) string {
+	if result.Sandbox != nil && result.Sandbox.Image != "" {
+		return result.Sandbox.Image
+	}
+	return sandbox.DefaultImage
+}
+
+// sandboxNetwork restituisce la modalità rete dalla SandboxConfig della regola,
+// o il default (none) se non specificata.
+func sandboxNetwork(result policy.EvalResult) string {
+	if result.Sandbox != nil && result.Sandbox.Network != "" {
+		return result.Sandbox.Network
+	}
+	return sandbox.DefaultNetwork
+}
+
+// rewriteHostPaths sostituisce i riferimenti al workDir host con /workspace
+// nel comando, in modo che i path assoluti funzionino dentro il container.
+// Es: "python3 /Users/foo/project/test.py" → "python3 /workspace/test.py"
+func rewriteHostPaths(command, workDir string) string {
+	if workDir == "" {
+		return command
+	}
+	return strings.ReplaceAll(command, workDir, "/workspace")
+}

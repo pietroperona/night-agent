@@ -1,0 +1,113 @@
+package shim
+
+import (
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
+)
+
+// ShimmedCommands è la lista dei comandi intercettati via PATH shim.
+// guardian-shim viene installato come symlink con ognuno di questi nomi.
+var ShimmedCommands = []string{
+	"sudo", "rm", "git", "curl", "wget",
+	"chmod", "chown", "mv", "cp",
+	"bash", "sh", "pip", "pip3",
+	"npm", "brew",
+	"python", "python3",
+	"tee",
+	"chflags",
+}
+
+const ShimBinaryName = "guardian-shim"
+
+// ShimDir restituisce il path della directory degli shim dato guardianDir.
+func ShimDir(guardianDir string) string {
+	return filepath.Join(guardianDir, "shims")
+}
+
+// PrependPath prepende shimDir alla variabile PATH nell'env dato.
+// Se shimDir è già il primo elemento, non duplica.
+// Se PATH non esiste, la crea con solo shimDir.
+func PrependPath(env []string, shimDir string) []string {
+	result := make([]string, 0, len(env)+1)
+	found := false
+	for _, e := range env {
+		if strings.HasPrefix(e, "PATH=") {
+			existing := e[5:]
+			// evita duplicazione se shimDir è già in prima posizione
+			if strings.HasPrefix(existing, shimDir+":") || existing == shimDir {
+				result = append(result, e)
+			} else {
+				result = append(result, "PATH="+shimDir+":"+existing)
+			}
+			found = true
+		} else {
+			result = append(result, e)
+		}
+	}
+	if !found {
+		result = append(result, "PATH="+shimDir)
+	}
+	return result
+}
+
+// CreateSymlinks crea symlink per ogni ShimmedCommand che punta a shimBinaryPath.
+// Sovrascrive symlink esistenti. Non tocca file regolari (non-symlink).
+func CreateSymlinks(shimDir, shimBinaryPath string) error {
+	for _, cmd := range ShimmedCommands {
+		linkPath := filepath.Join(shimDir, cmd)
+		if info, err := os.Lstat(linkPath); err == nil {
+			if info.Mode()&os.ModeSymlink != 0 {
+				if err := os.Remove(linkPath); err != nil {
+					return fmt.Errorf("impossibile rimuovere symlink esistente %s: %w", linkPath, err)
+				}
+			}
+			// se è un file regolare, lo lasciamo stare (non sovrascriviamo binari reali)
+		}
+		if err := os.Symlink(shimBinaryPath, linkPath); err != nil {
+			return fmt.Errorf("impossibile creare symlink per %s: %w", cmd, err)
+		}
+	}
+	return nil
+}
+
+// Install crea la directory degli shim, copia il binario guardian-shim al suo interno
+// e installa le symlink. I symlink puntano al binario copiato nella stessa directory,
+// così la shim dir è autocontenuta e indipendente dalla directory di build.
+func Install(guardianDir, shimBinaryPath string) error {
+	shimDirPath := ShimDir(guardianDir)
+	if err := os.MkdirAll(shimDirPath, 0755); err != nil {
+		return fmt.Errorf("impossibile creare %s: %w", shimDirPath, err)
+	}
+	destBinary := filepath.Join(shimDirPath, ShimBinaryName)
+	if err := copyFile(shimBinaryPath, destBinary, 0755); err != nil {
+		return fmt.Errorf("impossibile copiare %s: %w", ShimBinaryName, err)
+	}
+	return CreateSymlinks(shimDirPath, destBinary)
+}
+
+func copyFile(src, dst string, mode os.FileMode) error {
+	// evita di copiare un file su se stesso (O_TRUNC azzererebbe il file sorgente)
+	srcAbs, _ := filepath.EvalSymlinks(src)
+	dstAbs, _ := filepath.EvalSymlinks(dst)
+	if srcAbs != "" && srcAbs == dstAbs {
+		return nil
+	}
+
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, mode)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, in)
+	return err
+}

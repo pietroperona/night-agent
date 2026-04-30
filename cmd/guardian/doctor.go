@@ -1,0 +1,98 @@
+package main
+
+import (
+	"fmt"
+	"net"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"time"
+
+	"github.com/night-agent-cli/night-agent/internal/shell"
+	"github.com/spf13/cobra"
+)
+
+var doctorCmd = &cobra.Command{
+	Use:   "doctor",
+	Short: "Verifica lo stato dell'installazione di Night Agent",
+	RunE:  runDoctor,
+}
+
+func init() {
+	rootCmd.AddCommand(doctorCmd)
+}
+
+func runDoctor(cmd *cobra.Command, args []string) error {
+	home, _ := os.UserHomeDir()
+	guardianDir := filepath.Join(home, ".night-agent")
+	policyPath := filepath.Join(guardianDir, "policy.yaml")
+	socketPath := filepath.Join(guardianDir, "night-agent.sock")
+
+	allOK := true
+
+	check := func(label string, ok bool, detail string) {
+		status := "✓"
+		if !ok {
+			status = "✗"
+			allOK = false
+		}
+		if detail != "" {
+			fmt.Printf("  %s %s — %s\n", status, label, detail)
+		} else {
+			fmt.Printf("  %s %s\n", status, label)
+		}
+	}
+
+	fmt.Println("Night Agent — diagnostica:")
+
+	_, errDir := os.Stat(guardianDir)
+	check("directory ~/.night-agent", errDir == nil, guardianDir)
+
+	_, errPolicy := os.Stat(policyPath)
+	check("policy.yaml", errPolicy == nil, policyPath)
+
+	rcPath := filepath.Join(home, ".zshrc")
+	check("hook shell (.zshrc)", shell.IsInjected(rcPath), "")
+
+	daemonRunning := isDaemonRunning(socketPath)
+	check("daemon in esecuzione", daemonRunning, socketPath)
+
+	fmt.Println()
+	fmt.Println("Sandbox (Ciclo 2):")
+
+	dockerInstalled := isDockerInstalled()
+	check("Docker installato", dockerInstalled, "")
+
+	dockerRunning := false
+	if dockerInstalled {
+		dockerRunning = isDockerRunning()
+	}
+	check("Docker daemon in esecuzione", dockerRunning, "")
+
+	fmt.Println()
+	if allOK {
+		fmt.Println("tutto ok — night-agent è operativo")
+	} else {
+		fmt.Println("alcuni controlli falliti — esegui 'night-agent init' per configurare")
+	}
+	return nil
+}
+
+func isDockerInstalled() bool {
+	_, err := exec.LookPath("docker")
+	return err == nil
+}
+
+func isDockerRunning() bool {
+	cmd := exec.Command("docker", "info")
+	return cmd.Run() == nil
+}
+
+func isDaemonRunning(socketPath string) bool {
+	conn, err := net.DialTimeout("unix", socketPath, 500*time.Millisecond)
+	if err != nil {
+		return false
+	}
+	conn.Close()
+	return true
+}

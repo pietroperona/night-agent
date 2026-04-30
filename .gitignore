@@ -1,0 +1,20 @@
+# Binaries (solo root, non directory col nome)
+/nightagent
+/night-agent
+/guardian
+/guardian-shim
+/guardian-intercept.dylib
+
+# macOS
+.DS_Store
+
+# Go
+*.test
+*.out
+/vendor/
+
+# Night Agent config locale
+.nightagent/
+
+# Documenti privati (non versionati)
+docs/private/
