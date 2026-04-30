@@ -43,8 +43,10 @@ func Load(path string) (*Config, error) {
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("parsing cloud.yaml: %w", err)
 	}
-	// Endpoint sempre dal valore compilato — non modificabile dall'utente.
-	cfg.Endpoint = defaultEndpoint
+	// Usa endpoint dal YAML se presente, altrimenti quello compilato.
+	if cfg.Endpoint == "" {
+		cfg.Endpoint = defaultEndpoint
+	}
 	return &cfg, nil
 }
 
